@@ -24,12 +24,14 @@ export default function ProductClient({ product }: { product: string }) {
 
   if (!productInfo) return <div className="p-8 text-red-500">Продукт не найден</div>;
 
+  const Icon = productInfo.icon;
+
   return (
     <div className="p-8">
       <div className="mb-6 flex items-center gap-3">
         <Link href="/dashboard" className="text-sm text-gray-400 hover:text-gray-600">← Все продукты</Link>
         <span className="text-gray-300">/</span>
-        <span className="text-2xl">{productInfo.icon}</span>
+        <Icon size={20} className="text-indigo-600" />
         <h1 className="text-2xl font-bold text-gray-900">{productInfo.label}</h1>
       </div>
 

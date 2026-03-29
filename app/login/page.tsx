@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { Zap } from "lucide-react";
 import { supabase } from "../lib/supabase";
 
 export default function LoginPage() {
@@ -40,7 +41,7 @@ export default function LoginPage() {
     <div className="h-full flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 w-full max-w-sm">
         <div className="text-center mb-8">
-          <div className="text-4xl mb-3">⚡</div>
+          <div className="flex justify-center mb-3 text-indigo-600"><Zap size={40} /></div>
           <h1 className="text-xl font-bold text-gray-900">Ezze Super Admin</h1>
           <p className="text-sm text-gray-500 mt-1">Только для администраторов</p>
         </div>

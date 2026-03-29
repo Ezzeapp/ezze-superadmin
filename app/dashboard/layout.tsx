@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
+import { Zap } from "lucide-react";
 import { supabase, PRODUCTS } from "../lib/supabase";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -34,12 +35,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <aside className="w-56 bg-gray-900 flex flex-col shrink-0">
         <div className="p-4 border-b border-gray-800">
           <Link href="/dashboard" className="flex items-center gap-2 text-white font-bold">
-            <span>⚡</span><span>Super Admin</span>
+            <Zap size={18} /><span>Super Admin</span>
           </Link>
         </div>
         <nav className="flex-1 overflow-y-auto py-2">
           {PRODUCTS.map((p) => {
             const active = pathname.startsWith(`/dashboard/${p.slug}`);
+            const Icon = p.icon;
             return (
               <Link
                 key={p.slug}
@@ -48,7 +50,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   active ? "bg-indigo-600 text-white" : "text-gray-400 hover:text-white hover:bg-gray-800"
                 }`}
               >
-                <span>{p.icon}</span>
+                <Icon size={15} />
                 <span className="truncate">{p.label}</span>
               </Link>
             );

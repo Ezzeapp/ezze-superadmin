@@ -1,15 +1,27 @@
-export const PRODUCTS = [
-  { slug: "main",      label: "Главная (ezze.site)",   icon: "🏠" },
-  { slug: "beauty",    label: "Ezze Beauty",            icon: "💄" },
-  { slug: "workshop",  label: "Ezze Workshop",          icon: "👕" },
-  { slug: "clinic",    label: "Ezze Clinic",            icon: "🏥" },
-  { slug: "farm",      label: "Ezze Farm",              icon: "🌾" },
-  { slug: "edu",       label: "Ezze Edu",               icon: "🎓" },
-  { slug: "event",     label: "Ezze Event",             icon: "🎉" },
-  { slug: "food",      label: "Ezze Food",              icon: "🍕" },
-  { slug: "hotel",     label: "Ezze Hotel",             icon: "🏨" },
-  { slug: "transport", label: "Ezze Transport",         icon: "🚗" },
-  { slug: "build",     label: "Ezze Build",             icon: "🏗️" },
+import {
+  Globe, Scissors, Shirt, Stethoscope, Leaf, GraduationCap,
+  CalendarDays, UtensilsCrossed, Building2, Car, Hammer,
+} from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+
+export interface ProductItem {
+  slug: string;
+  label: string;
+  icon: LucideIcon;
+}
+
+export const PRODUCTS: ProductItem[] = [
+  { slug: "main",      label: "Главная (ezze.site)",   icon: Globe },
+  { slug: "beauty",    label: "Ezze Beauty",            icon: Scissors },
+  { slug: "workshop",  label: "Ezze Workshop",          icon: Shirt },
+  { slug: "clinic",    label: "Ezze Clinic",            icon: Stethoscope },
+  { slug: "farm",      label: "Ezze Farm",              icon: Leaf },
+  { slug: "edu",       label: "Ezze Edu",               icon: GraduationCap },
+  { slug: "event",     label: "Ezze Event",             icon: CalendarDays },
+  { slug: "food",      label: "Ezze Food",              icon: UtensilsCrossed },
+  { slug: "hotel",     label: "Ezze Hotel",             icon: Building2 },
+  { slug: "transport", label: "Ezze Transport",         icon: Car },
+  { slug: "build",     label: "Ezze Build",             icon: Hammer },
 ];
 
 export const SECTIONS = [

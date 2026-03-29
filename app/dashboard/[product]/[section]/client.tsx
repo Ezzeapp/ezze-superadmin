@@ -89,8 +89,9 @@ export default function SectionEditorClient({
       <div className="flex items-center gap-2 text-sm text-gray-400 mb-6">
         <Link href="/dashboard" className="hover:text-gray-600">Все продукты</Link>
         <span>/</span>
-        <Link href={`/dashboard/${product}`} className="hover:text-gray-600">
-          {productInfo.icon} {productInfo.label}
+        <Link href={`/dashboard/${product}`} className="hover:text-gray-600 flex items-center gap-1">
+          {(() => { const Icon = productInfo.icon; return <Icon size={14} />; })()}
+          {productInfo.label}
         </Link>
         <span>/</span>
         <span className="text-gray-700 font-medium">{sectionInfo.label}</span>
