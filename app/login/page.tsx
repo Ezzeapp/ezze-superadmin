@@ -18,14 +18,14 @@ export default function LoginPage() {
       const { data, error: authError } = await supabase.auth.signInWithPassword({ email, password });
       if (authError) { setError(authError.message); return; }
 
-      // Check admin role
+      // Check admin flag
       const { data: userData } = await supabase
         .from("users")
-        .select("role")
+        .select("is_admin")
         .eq("id", data.user!.id)
         .single();
 
-      if (userData?.role !== "admin") {
+      if (!userData?.is_admin) {
         await supabase.auth.signOut();
         setError("Нет доступа. Только администраторы могут войти.");
         return;

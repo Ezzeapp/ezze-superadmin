@@ -13,8 +13,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     supabase.auth.getSession().then(async ({ data }) => {
       if (!data.session) { router.replace("/login"); return; }
       const { data: userData } = await supabase
-        .from("users").select("role").eq("id", data.session.user.id).single();
-      if (userData?.role !== "admin") { router.replace("/login"); return; }
+        .from("users").select("is_admin").eq("id", data.session.user.id).single();
+      if (!userData?.is_admin) { router.replace("/login"); return; }
       setChecking(false);
     });
   }, [router]);
