@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
-import { Zap } from "lucide-react";
+import { Zap, Settings } from "lucide-react";
 import { supabase, PRODUCTS } from "../lib/supabase";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -56,13 +56,26 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             );
           })}
         </nav>
-        <div className="p-4 border-t border-gray-800">
-          <button
-            onClick={handleLogout}
-            className="w-full text-sm text-gray-400 hover:text-white transition-colors text-left"
+        <div className="border-t border-gray-800">
+          <Link
+            href="/dashboard/settings"
+            className={`flex items-center gap-2.5 px-4 py-2.5 text-sm transition-colors ${
+              pathname === "/dashboard/settings"
+                ? "bg-indigo-600 text-white"
+                : "text-gray-400 hover:text-white hover:bg-gray-800"
+            }`}
           >
-            Выйти
-          </button>
+            <Settings size={15} />
+            <span>Настройки</span>
+          </Link>
+          <div className="p-4">
+            <button
+              onClick={handleLogout}
+              className="w-full text-sm text-gray-400 hover:text-white transition-colors text-left"
+            >
+              Выйти
+            </button>
+          </div>
         </div>
       </aside>
 
