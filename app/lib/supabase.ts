@@ -6,5 +6,5 @@ export const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
-export { PRODUCTS, SECTIONS, LANGS } from "./constants";
+export { PRODUCTS, SECTIONS, LANGS, SECTION_SCHEMAS } from "./constants";
 export type { Lang } from "./constants";

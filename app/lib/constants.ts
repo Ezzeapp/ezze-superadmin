@@ -36,3 +36,34 @@ export const SECTIONS = [
 
 export const LANGS = ["ru", "uz", "en"] as const;
 export type Lang = (typeof LANGS)[number];
+
+export const SECTION_SCHEMAS: Record<string, string> = {
+  hero: JSON.stringify(
+    { title: "Ezze Beauty", subtitle: "Платформа для мастеров красоты", badge: "Топ продукт", cta_text: "Открыть приложение", cta_url: "https://pro.ezze.site" },
+    null, 2
+  ),
+  features: JSON.stringify(
+    { title: "Возможности", items: [{ title: "Онлайн-запись", description: "Клиенты записываются сами 24/7" }, { title: "Клиентская база", description: "История всех визитов" }] },
+    null, 2
+  ),
+  pricing: JSON.stringify(
+    { title: "Тарифы", plans: [{ name: "Бесплатный", price: "0", period: "мес", features: ["До 50 клиентов", "Календарь"], highlighted: false }, { name: "Про", price: "99 000", period: "мес", features: ["Без ограничений", "Команда", "Аналитика"], highlighted: true }] },
+    null, 2
+  ),
+  reviews: JSON.stringify(
+    { title: "Отзывы", items: [{ author: "Анна К.", role: "Мастер маникюра", text: "Отличное приложение!", rating: 5 }] },
+    null, 2
+  ),
+  faq: JSON.stringify(
+    { title: "Частые вопросы", items: [{ question: "Как начать работу?", answer: "Зарегистрируйтесь и добавьте свои услуги." }] },
+    null, 2
+  ),
+  cta: JSON.stringify(
+    { title: "Готовы начать?", subtitle: "Бесплатный тариф навсегда.", button_text: "Создать аккаунт", button_url: "https://pro.ezze.site/register" },
+    null, 2
+  ),
+  meta: JSON.stringify(
+    { title: "Ezze Beauty — платформа для мастеров красоты", description: "Онлайн-запись, клиентская база, аналитика", keywords: "мастер красоты, онлайн запись" },
+    null, 2
+  ),
+};

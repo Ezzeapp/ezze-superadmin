@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
-import { supabase, PRODUCTS, SECTIONS, LANGS, type Lang } from "../../../lib/supabase";
+import { supabase, PRODUCTS, SECTIONS, LANGS, SECTION_SCHEMAS, type Lang } from "../../../lib/supabase";
 
 export default function SectionEditorClient({
   product,
@@ -141,7 +141,7 @@ export default function SectionEditorClient({
                 className={`flex-1 w-full font-mono text-sm border rounded-lg p-3 resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500 min-h-64 ${
                   jsonError ? "border-red-300 bg-red-50" : "border-gray-300"
                 }`}
-                placeholder={'{\n  "title": "Заголовок",\n  "subtitle": "Подзаголовок"\n}'}
+                placeholder={SECTION_SCHEMAS[section] || '{\n  "title": "Заголовок",\n  "subtitle": "Подзаголовок"\n}'}
                 spellCheck={false}
               />
               {jsonError && (
