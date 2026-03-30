@@ -43,17 +43,20 @@ function applyTheme(dark: boolean) {
   }
 }
 
-// Favicon SVG preview with given hex color
+// Favicon SVG preview — inline SVG avoids browser caching issues with data: URLs
 function FaviconPreview({ color, size = 40 }: { color: string; size?: number }) {
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none"><rect width="32" height="32" rx="8" fill="${color}"/><polygon points="17.3,2.7 4,18.7 16,18.7 14.7,29.3 28,13.3 16,13.3" fill="white"/></svg>`;
   return (
-    <img
-      src={`data:image/svg+xml,${encodeURIComponent(svg)}`}
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 32 32"
+      fill="none"
       width={size}
       height={size}
-      alt="favicon preview"
-      style={{ borderRadius: 6 }}
-    />
+      style={{ borderRadius: 6, flexShrink: 0 }}
+    >
+      <rect width="32" height="32" rx="8" fill={color} />
+      <polygon points="17.3,2.7 4,18.7 16,18.7 14.7,29.3 28,13.3 16,13.3" fill="white" />
+    </svg>
   );
 }
 
@@ -197,7 +200,7 @@ export default function SettingsPage() {
 
           {/* Preview */}
           <div className="flex items-center gap-4">
-            <FaviconPreview color={faviconColor} size={48} />
+            <FaviconPreview color={faviconColor} size={64} />
             <div>
               <p className="text-xs text-gray-500 font-medium">Предпросмотр</p>
               <p className="text-xs text-gray-400 mt-0.5">{faviconColor}</p>
