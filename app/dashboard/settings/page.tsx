@@ -51,7 +51,7 @@ function FaviconPreview({ color, size = 40 }: { color: string; size?: number }) 
       viewBox="0 0 32 32"
       style={{ width: size, height: size, minWidth: size, minHeight: size, borderRadius: 6, flexShrink: 0, display: "block" }}
     >
-      <rect width="32" height="32" rx="8" style={{ fill: color }} />
+      <rect width="32" height="32" style={{ fill: color }} />
       <polygon points="17.3,2.7 4,18.7 16,18.7 14.7,29.3 28,13.3 16,13.3" style={{ fill: "white" }} />
     </svg>
   );

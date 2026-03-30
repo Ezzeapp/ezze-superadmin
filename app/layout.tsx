@@ -32,7 +32,7 @@ const themeScript = `(function(){
         fillColor = sc ? (JSON.parse(sc)[500] || '#6366f1') : '#6366f1';
       }
       var svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">'
-        + '<rect width="32" height="32" rx="8" fill="' + fillColor + '"/>'
+        + '<rect width="32" height="32" fill="' + fillColor + '"/>'
         + '<polygon points="17.3,2.7 4,18.7 16,18.7 14.7,29.3 28,13.3 16,13.3" fill="white"/>'
         + '</svg>';
       var url = 'data:image/svg+xml,' + encodeURIComponent(svg);
