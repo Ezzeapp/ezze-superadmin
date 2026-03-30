@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { Sun, Moon, Check } from "lucide-react";
+import { supabase } from "../../lib/supabase";
 
 // Color presets — shades 50/100/300/500/600/700
 const COLORS = [
@@ -26,7 +27,7 @@ function applyColor(c: ColorPreset) {
     50: c[50], 100: c[100], 300: c[300],
     500: c[500], 600: c[600], 700: c[700],
   }));
-  // Update favicon color immediately
+  // Update superadmin favicon color immediately
   if (typeof window !== "undefined" && (window as any).__updateFavicon) {
     (window as any).__updateFavicon(c[500]);
   }
@@ -42,9 +43,29 @@ function applyTheme(dark: boolean) {
   }
 }
 
+// Favicon SVG preview with given hex color
+function FaviconPreview({ color, size = 40 }: { color: string; size?: number }) {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none"><rect width="32" height="32" rx="8" fill="${color}"/><polygon points="17.3,2.7 4,18.7 16,18.7 14.7,29.3 28,13.3 16,13.3" fill="white"/></svg>`;
+  return (
+    <img
+      src={`data:image/svg+xml,${encodeURIComponent(svg)}`}
+      width={size}
+      height={size}
+      alt="favicon preview"
+      style={{ borderRadius: 6 }}
+    />
+  );
+}
+
 export default function SettingsPage() {
   const [isDark, setIsDark] = useState(false);
   const [activeColor, setActiveColor] = useState("Indigo");
+
+  // Platform favicon color (stored in Supabase app_settings)
+  const [faviconColor, setFaviconColor] = useState("#6366f1");
+  const [activeFaviconColor, setActiveFaviconColor] = useState("Indigo");
+  const [faviconSaving, setFaviconSaving] = useState(false);
+  const [faviconSaved, setFaviconSaved] = useState(false);
 
   useEffect(() => {
     setIsDark(document.documentElement.classList.contains("dark"));
@@ -56,6 +77,20 @@ export default function SettingsPage() {
         if (found) setActiveColor(found.name);
       } catch { /* ignore */ }
     }
+
+    // Load platform favicon color from Supabase
+    supabase
+      .from("app_settings")
+      .select("value")
+      .eq("key", "platform_favicon_color")
+      .single()
+      .then(({ data }) => {
+        if (data?.value) {
+          setFaviconColor(data.value);
+          const found = COLORS.find((c) => c[500] === data.value);
+          if (found) setActiveFaviconColor(found.name);
+        }
+      });
   }, []);
 
   function toggleTheme(dark: boolean) {
@@ -66,6 +101,24 @@ export default function SettingsPage() {
   function pickColor(c: ColorPreset) {
     setActiveColor(c.name);
     applyColor(c);
+  }
+
+  async function pickFaviconColor(c: ColorPreset) {
+    setActiveFaviconColor(c.name);
+    setFaviconColor(c[500]);
+  }
+
+  async function saveFaviconColor() {
+    setFaviconSaving(true);
+    try {
+      await supabase
+        .from("app_settings")
+        .upsert({ key: "platform_favicon_color", value: faviconColor }, { onConflict: "key" });
+      setFaviconSaved(true);
+      setTimeout(() => setFaviconSaved(false), 2000);
+    } finally {
+      setFaviconSaving(false);
+    }
   }
 
   return (
@@ -106,7 +159,7 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        {/* Primary color */}
+        {/* Primary color (superadmin UI) */}
         <div className="bg-white border border-gray-200 rounded-xl p-5">
           <h2 className="text-sm font-semibold text-gray-700 mb-1">Основной цвет</h2>
           <p className="text-xs text-gray-400 mb-4">Применяется к кнопкам, активным ссылкам и акцентам</p>
@@ -131,6 +184,54 @@ export default function SettingsPage() {
             Выбран:{" "}
             <span className="font-medium text-gray-600">{activeColor}</span>
           </p>
+        </div>
+
+        {/* Platform favicon (ezze.site + pro.ezze.site) */}
+        <div className="bg-white border border-gray-200 rounded-xl p-5 space-y-4">
+          <div>
+            <h2 className="text-sm font-semibold text-gray-700 mb-1">Иконка сайтов</h2>
+            <p className="text-xs text-gray-400">
+              Цвет иконки в браузерной вкладке для ezze.site и pro.ezze.site
+            </p>
+          </div>
+
+          {/* Preview */}
+          <div className="flex items-center gap-4">
+            <FaviconPreview color={faviconColor} size={48} />
+            <div>
+              <p className="text-xs text-gray-500 font-medium">Предпросмотр</p>
+              <p className="text-xs text-gray-400 mt-0.5">{faviconColor}</p>
+            </div>
+          </div>
+
+          {/* Color picker */}
+          <div className="flex flex-wrap gap-3">
+            {COLORS.map((c) => (
+              <button
+                key={c.name}
+                onClick={() => pickFaviconColor(c)}
+                title={c.name}
+                className="relative w-9 h-9 rounded-full transition-transform hover:scale-110 focus:outline-none"
+                style={{ backgroundColor: c[500] }}
+              >
+                {activeFaviconColor === c.name && (
+                  <span className="absolute inset-0 flex items-center justify-center">
+                    <Check size={16} className="text-white drop-shadow" />
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+
+          <button
+            onClick={saveFaviconColor}
+            disabled={faviconSaving}
+            className={`inline-flex h-8 items-center gap-1.5 rounded-lg px-4 text-sm font-medium transition-colors disabled:opacity-50 ${
+              faviconSaved ? "bg-emerald-600 text-white" : "bg-indigo-600 text-white hover:bg-indigo-700"
+            }`}
+          >
+            {faviconSaved ? "Сохранено ✓" : faviconSaving ? "Сохраняю..." : "Сохранить"}
+          </button>
         </div>
 
         <p className="text-xs text-gray-400">
