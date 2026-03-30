@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* ── Dark mode: class-based (html.dark), not OS preference ───── */
+@custom-variant dark (&:where(.dark, .dark *));
+
 /* ── Dark mode overrides ─────────────────────────────────────── */
 html.dark { color-scheme: dark; }
 html.dark body            { background-color: #111827; }
