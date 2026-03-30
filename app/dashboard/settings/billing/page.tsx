@@ -41,6 +41,7 @@ export default function BillingSettingsPage() {
   const [clickService, setClickService] = useState("");
   const [clickMerchant, setClickMerchant] = useState("");
   const [clickKey, setClickKey] = useState("");
+  const [clickUserId, setClickUserId] = useState("");
   const [existingKeys, setExistingKeys] = useState<Record<string, boolean>>({});
 
   const [subs, setSubs] = useState<any[]>([]);
@@ -54,7 +55,7 @@ export default function BillingSettingsPage() {
         .from("app_settings")
         .select("key, value")
         .in("key", ["plan_prices", "plan_limits", "plan_features", "payment_providers",
-          "payme_merchant_id", "click_service_id", "click_merchant_id"]);
+          "payme_merchant_id", "click_service_id", "click_merchant_id", "click_user_id"]);
 
       const existing: Record<string, boolean> = {};
       settings?.forEach(s => {
@@ -62,7 +63,7 @@ export default function BillingSettingsPage() {
         if (s.key === "plan_limits") { try { setLimits(JSON.parse(s.value)); } catch {} }
         if (s.key === "plan_features") { try { setFeatures({ ...DEFAULT_FEATURES, ...JSON.parse(s.value) }); } catch {} }
         if (s.key === "payment_providers") { try { setProviders(JSON.parse(s.value)); } catch {} }
-        if (["payme_merchant_id", "click_service_id", "click_merchant_id"].includes(s.key) && s.value)
+        if (["payme_merchant_id", "click_service_id", "click_merchant_id", "click_user_id"].includes(s.key) && s.value)
           existing[s.key] = true;
       });
       setExistingKeys(existing);
@@ -355,16 +356,18 @@ export default function BillingSettingsPage() {
             [
               { label: "Service ID", key: "click_service_id", value: clickService, onChange: setClickService, existing: existingKeys },
               { label: "Merchant ID", key: "click_merchant_id", value: clickMerchant, onChange: setClickMerchant, existing: existingKeys },
+              { label: "Merchant User ID", key: "click_user_id", value: clickUserId, onChange: setClickUserId, existing: existingKeys },
               { label: "Secret Key", key: "click_key", value: clickKey, onChange: setClickKey, existing: {}, password: true },
             ],
             () => saveSection("click", async () => {
               if (clickService) await upsert("click_service_id", clickService);
               if (clickMerchant) await upsert("click_merchant_id", clickMerchant);
+              if (clickUserId) await upsert("click_user_id", clickUserId);
               if (clickKey) await upsert("click_merchant_key", clickKey);
-              setClickService(""); setClickMerchant(""); setClickKey("");
+              setClickService(""); setClickMerchant(""); setClickUserId(""); setClickKey("");
             }),
             saving === "click", saved === "click",
-            !clickService && !clickMerchant && !clickKey
+            !clickService && !clickMerchant && !clickUserId && !clickKey
           )}
         </div>
       </div>
