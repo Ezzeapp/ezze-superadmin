@@ -86,10 +86,15 @@ export default function SettingsPage() {
       .eq("key", "platform_color")
       .single()
       .then(({ data }) => {
-        if (data?.value && typeof data.value === "object") {
-          const v = data.value as Record<string, string>;
-          setFaviconColor(v[500] ?? "#6366f1");
-          const found = COLORS.find((c) => c[500] === v[500]);
+        if (data?.value) {
+          // value is TEXT in DB — may come back as string or object
+          let v: Record<string, string>;
+          try {
+            v = typeof data.value === "string" ? JSON.parse(data.value) : (data.value as Record<string, string>);
+          } catch { v = {}; }
+          const hex500 = v["500"] ?? "#6366f1";
+          setFaviconColor(hex500);
+          const found = COLORS.find((c) => c[500] === hex500);
           if (found) { setActiveFaviconColor(found.name); setFaviconColorObj(found); }
         } else {
           // fallback: old platform_favicon_color
