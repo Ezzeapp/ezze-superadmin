@@ -61,9 +61,10 @@ export default function SettingsPage() {
   const [isDark, setIsDark] = useState(false);
   const [activeColor, setActiveColor] = useState("Indigo");
 
-  // Platform favicon color (stored in Supabase app_settings)
+  // Platform color (stored in Supabase app_settings as JSON with all shades)
   const [faviconColor, setFaviconColor] = useState("#6366f1");
   const [activeFaviconColor, setActiveFaviconColor] = useState("Indigo");
+  const [faviconColorObj, setFaviconColorObj] = useState<ColorPreset | null>(null);
   const [faviconSaving, setFaviconSaving] = useState(false);
   const [faviconSaved, setFaviconSaved] = useState(false);
 
@@ -78,17 +79,28 @@ export default function SettingsPage() {
       } catch { /* ignore */ }
     }
 
-    // Load platform favicon color from Supabase
+    // Load platform color (all shades) from Supabase
     supabase
       .from("app_settings")
       .select("value")
-      .eq("key", "platform_favicon_color")
+      .eq("key", "platform_color")
       .single()
       .then(({ data }) => {
-        if (data?.value) {
-          setFaviconColor(data.value);
-          const found = COLORS.find((c) => c[500] === data.value);
-          if (found) setActiveFaviconColor(found.name);
+        if (data?.value && typeof data.value === "object") {
+          const v = data.value as Record<string, string>;
+          setFaviconColor(v[500] ?? "#6366f1");
+          const found = COLORS.find((c) => c[500] === v[500]);
+          if (found) { setActiveFaviconColor(found.name); setFaviconColorObj(found); }
+        } else {
+          // fallback: old platform_favicon_color
+          supabase.from("app_settings").select("value").eq("key", "platform_favicon_color").single()
+            .then(({ data: d2 }) => {
+              if (d2?.value) {
+                setFaviconColor(d2.value as string);
+                const found = COLORS.find((c) => c[500] === d2.value);
+                if (found) { setActiveFaviconColor(found.name); setFaviconColorObj(found); }
+              }
+            });
         }
       });
   }, []);
@@ -106,14 +118,23 @@ export default function SettingsPage() {
   async function pickFaviconColor(c: ColorPreset) {
     setActiveFaviconColor(c.name);
     setFaviconColor(c[500]);
+    setFaviconColorObj(c);
   }
 
   async function saveFaviconColor() {
     setFaviconSaving(true);
     try {
-      await supabase
-        .from("app_settings")
-        .upsert({ key: "platform_favicon_color", value: faviconColor }, { onConflict: "key" });
+      const obj = faviconColorObj ?? COLORS.find((c) => c[500] === faviconColor) ?? COLORS[0];
+      // Save full color object (all shades) for platform sites to use
+      await supabase.from("app_settings").upsert(
+        { key: "platform_color", value: { 50: obj[50], 100: obj[100], 300: obj[300], 500: obj[500], 600: obj[600], 700: obj[700] } },
+        { onConflict: "key" }
+      );
+      // Also save simple hex for backward compat
+      await supabase.from("app_settings").upsert(
+        { key: "platform_favicon_color", value: obj[500] },
+        { onConflict: "key" }
+      );
       setFaviconSaved(true);
       setTimeout(() => setFaviconSaved(false), 2000);
     } finally {
@@ -189,9 +210,9 @@ export default function SettingsPage() {
         {/* Platform favicon (ezze.site + pro.ezze.site) */}
         <div className="bg-white border border-gray-200 rounded-xl p-5 space-y-4">
           <div>
-            <h2 className="text-sm font-semibold text-gray-700 mb-1">Иконка сайтов</h2>
+            <h2 className="text-sm font-semibold text-gray-700 mb-1">Цвет платформы</h2>
             <p className="text-xs text-gray-400">
-              Цвет иконки в браузерной вкладке для ezze.site и pro.ezze.site
+              Основной цвет и иконка сайта ezze.site — кнопки, ссылки, акценты
             </p>
           </div>
 
