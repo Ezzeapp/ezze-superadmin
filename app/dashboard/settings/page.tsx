@@ -26,6 +26,10 @@ function applyColor(c: ColorPreset) {
     50: c[50], 100: c[100], 300: c[300],
     500: c[500], 600: c[600], 700: c[700],
   }));
+  // Update favicon color immediately
+  if (typeof window !== "undefined" && (window as any).__updateFavicon) {
+    (window as any).__updateFavicon(c[500]);
+  }
 }
 
 function applyTheme(dark: boolean) {
