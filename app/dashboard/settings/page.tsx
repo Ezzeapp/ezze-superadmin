@@ -43,19 +43,16 @@ function applyTheme(dark: boolean) {
   }
 }
 
-// Favicon SVG preview — inline SVG avoids browser caching issues with data: URLs
+// Favicon SVG preview — inline SVG with CSS styles (higher priority than presentation attributes)
 function FaviconPreview({ color, size = 40 }: { color: string; size?: number }) {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
       viewBox="0 0 32 32"
-      fill="none"
-      width={size}
-      height={size}
-      style={{ borderRadius: 6, flexShrink: 0 }}
+      style={{ width: size, height: size, minWidth: size, minHeight: size, borderRadius: 6, flexShrink: 0, display: "block" }}
     >
-      <rect width="32" height="32" rx="8" fill={color} />
-      <polygon points="17.3,2.7 4,18.7 16,18.7 14.7,29.3 28,13.3 16,13.3" fill="white" />
+      <rect width="32" height="32" rx="8" style={{ fill: color }} />
+      <polygon points="17.3,2.7 4,18.7 16,18.7 14.7,29.3 28,13.3 16,13.3" style={{ fill: "white" }} />
     </svg>
   );
 }
