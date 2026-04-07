@@ -5,12 +5,12 @@ import { supabase } from "../../lib/supabase";
 
 // Color presets — shades 50/100/300/500/600/700
 const COLORS = [
-  { name: "Indigo",  50:"#eef2ff", 100:"#e0e7ff", 300:"#a5b4fc", 500:"#6366f1", 600:"#4f46e5", 700:"#4338ca" },
-  { name: "Violet",  50:"#f5f3ff", 100:"#ede9fe", 300:"#c4b5fd", 500:"#8b5cf6", 600:"#7c3aed", 700:"#6d28d9" },
-  { name: "Blue",    50:"#eff6ff", 100:"#dbeafe", 300:"#93c5fd", 500:"#3b82f6", 600:"#2563eb", 700:"#1d4ed8" },
-  { name: "Teal",    50:"#f0fdfa", 100:"#ccfbf1", 300:"#5eead4", 500:"#14b8a6", 600:"#0d9488", 700:"#0f766e" },
-  { name: "Rose",    50:"#fff1f2", 100:"#ffe4e6", 300:"#fda4af", 500:"#f43f5e", 600:"#e11d48", 700:"#be123c" },
-  { name: "Amber",   50:"#fffbeb", 100:"#fef3c7", 300:"#fcd34d", 500:"#f59e0b", 600:"#d97706", 700:"#b45309" },
+  { name: "Indigo",  50:"#eef2ff", 100:"#e0e7ff", 200:"#c7d2fe", 300:"#a5b4fc", 400:"#818cf8", 500:"#6366f1", 600:"#4f46e5", 700:"#4338ca", 800:"#3730a3", 900:"#312e81" },
+  { name: "Violet",  50:"#f5f3ff", 100:"#ede9fe", 200:"#ddd6fe", 300:"#c4b5fd", 400:"#a78bfa", 500:"#8b5cf6", 600:"#7c3aed", 700:"#6d28d9", 800:"#5b21b6", 900:"#4c1d95" },
+  { name: "Blue",    50:"#eff6ff", 100:"#dbeafe", 200:"#bfdbfe", 300:"#93c5fd", 400:"#60a5fa", 500:"#3b82f6", 600:"#2563eb", 700:"#1d4ed8", 800:"#1e40af", 900:"#1e3a8a" },
+  { name: "Teal",    50:"#f0fdfa", 100:"#ccfbf1", 200:"#99f6e4", 300:"#5eead4", 400:"#2dd4bf", 500:"#14b8a6", 600:"#0d9488", 700:"#0f766e", 800:"#115e59", 900:"#134e4a" },
+  { name: "Rose",    50:"#fff1f2", 100:"#ffe4e6", 200:"#fecdd3", 300:"#fda4af", 400:"#fb7185", 500:"#f43f5e", 600:"#e11d48", 700:"#be123c", 800:"#9f1239", 900:"#881337" },
+  { name: "Amber",   50:"#fffbeb", 100:"#fef3c7", 200:"#fde68a", 300:"#fcd34d", 400:"#fbbf24", 500:"#f59e0b", 600:"#d97706", 700:"#b45309", 800:"#92400e", 900:"#78350f" },
 ] as const;
 
 type ColorPreset = typeof COLORS[number];
@@ -19,13 +19,17 @@ function applyColor(c: ColorPreset) {
   const el = document.documentElement;
   el.style.setProperty("--color-indigo-50",  c[50]);
   el.style.setProperty("--color-indigo-100", c[100]);
+  el.style.setProperty("--color-indigo-200", c[200]);
   el.style.setProperty("--color-indigo-300", c[300]);
+  el.style.setProperty("--color-indigo-400", c[400]);
   el.style.setProperty("--color-indigo-500", c[500]);
   el.style.setProperty("--color-indigo-600", c[600]);
   el.style.setProperty("--color-indigo-700", c[700]);
+  el.style.setProperty("--color-indigo-800", c[800]);
+  el.style.setProperty("--color-indigo-900", c[900]);
   localStorage.setItem("sa_color", JSON.stringify({
-    50: c[50], 100: c[100], 300: c[300],
-    500: c[500], 600: c[600], 700: c[700],
+    50: c[50], 100: c[100], 200: c[200], 300: c[300],
+    400: c[400], 500: c[500], 600: c[600], 700: c[700], 800: c[800], 900: c[900],
   }));
   // Update superadmin favicon color immediately
   if (typeof window !== "undefined" && (window as any).__updateFavicon) {
@@ -132,7 +136,11 @@ export default function SettingsPage() {
       const obj = faviconColorObj ?? COLORS.find((c) => c[500] === faviconColor) ?? COLORS[0];
       // Save full color object (all shades) for platform sites to use
       await supabase.from("app_settings").upsert(
-        { key: "platform_color", value: { 50: obj[50], 100: obj[100], 300: obj[300], 500: obj[500], 600: obj[600], 700: obj[700] } },
+        { key: "platform_color", value: {
+          50: obj[50], 100: obj[100], 200: obj[200], 300: obj[300],
+          400: obj[400], 500: obj[500], 600: obj[600], 700: obj[700],
+          800: obj[800], 900: obj[900],
+        }},
         { onConflict: "key" }
       );
       // Also save simple hex for backward compat
