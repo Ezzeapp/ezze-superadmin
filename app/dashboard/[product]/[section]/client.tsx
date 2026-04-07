@@ -86,34 +86,34 @@ export default function SectionEditorClient({
 
   return (
     <div className="p-8 h-full flex flex-col">
-      <div className="flex items-center gap-2 text-sm text-gray-400 mb-6">
-        <Link href="/dashboard" className="hover:text-gray-600">Все продукты</Link>
+      <div className="flex items-center gap-2 text-sm text-gray-400 dark:text-gray-500 mb-6">
+        <Link href="/dashboard" className="hover:text-gray-600 dark:hover:text-gray-300">Все продукты</Link>
         <span>/</span>
-        <Link href={`/dashboard/${product}`} className="hover:text-gray-600 flex items-center gap-1">
+        <Link href={`/dashboard/${product}`} className="hover:text-gray-600 dark:hover:text-gray-300 flex items-center gap-1">
           {(() => { const Icon = productInfo.icon; return <Icon size={14} />; })()}
           {productInfo.label}
         </Link>
         <span>/</span>
-        <span className="text-gray-700 font-medium">{sectionInfo.label}</span>
+        <span className="text-gray-700 dark:text-gray-200 font-medium">{sectionInfo.label}</span>
       </div>
 
-      <div className="flex-1 flex flex-col bg-white rounded-xl border border-gray-200 overflow-hidden">
-        <div className="flex items-center border-b border-gray-200 px-4">
+      <div className="flex-1 flex flex-col bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+        <div className="flex items-center border-b border-gray-200 dark:border-gray-700 px-4">
           {LANGS.map((lang) => (
             <button
               key={lang}
               onClick={() => setActiveLang(lang)}
               className={`px-5 py-3 text-sm font-medium border-b-2 -mb-px transition-colors ${
                 activeLang === lang
-                  ? "border-indigo-600 text-indigo-600"
-                  : "border-transparent text-gray-500 hover:text-gray-700"
+                  ? "border-indigo-600 text-indigo-600 dark:text-indigo-400 dark:border-indigo-400"
+                  : "border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
               }`}
             >
               {lang.toUpperCase()}
             </button>
           ))}
           <div className="ml-auto flex items-center gap-3 pr-2">
-            <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
+            <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 cursor-pointer">
               <input
                 type="checkbox"
                 checked={visibles[activeLang]}
@@ -132,27 +132,29 @@ export default function SectionEditorClient({
             <div className="flex-1 flex items-center justify-center text-gray-400 text-sm">Загрузка...</div>
           ) : (
             <>
-              <p className="text-xs text-gray-400 mb-2">
+              <p className="text-xs text-gray-400 dark:text-gray-500 mb-2">
                 Контент в формате JSON. Поля зависят от секции — редактируйте свободно.
               </p>
               <textarea
                 value={contents[activeLang]}
                 onChange={(e) => handleTextChange(e.target.value)}
                 className={`flex-1 w-full font-mono text-sm border rounded-lg p-3 resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500 min-h-64 ${
-                  jsonError ? "border-red-300 bg-red-50" : "border-gray-300"
+                  jsonError
+                    ? "border-red-300 bg-red-50 dark:border-red-700 dark:bg-red-950/30"
+                    : "border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                 }`}
                 placeholder={SECTION_SCHEMAS[section] || '{\n  "title": "Заголовок",\n  "subtitle": "Подзаголовок"\n}'}
                 spellCheck={false}
               />
               {jsonError && (
-                <p className="mt-2 text-sm text-red-600">{jsonError}</p>
+                <p className="mt-2 text-sm text-red-600 dark:text-red-400">{jsonError}</p>
               )}
             </>
           )}
         </div>
 
-        <div className="border-t border-gray-200 px-4 py-3 flex items-center justify-between">
-          <p className="text-xs text-gray-400">
+        <div className="border-t border-gray-200 dark:border-gray-700 px-4 py-3 flex items-center justify-between">
+          <p className="text-xs text-gray-400 dark:text-gray-500">
             Изменения применяются на ezze.site после следующего деплоя ezze-landing
           </p>
           <button
