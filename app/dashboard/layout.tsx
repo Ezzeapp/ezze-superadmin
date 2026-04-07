@@ -9,6 +9,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const router = useRouter();
   const pathname = usePathname();
   const [checking, setChecking] = useState(true);
+  const [productLabels, setProductLabels] = useState<Record<string, string>>({});
 
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data }) => {
@@ -19,6 +20,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       setChecking(false);
     });
   }, [router]);
+
+  useEffect(() => {
+    supabase.from("app_settings").select("value").eq("key", "products_config").single()
+      .then(({ data }) => {
+        if (!data?.value) return;
+        try {
+          const list: { slug: string; label: string }[] = JSON.parse(
+            typeof data.value === "string" ? data.value : JSON.stringify(data.value)
+          );
+          const map: Record<string, string> = {};
+          for (const item of list) map[item.slug] = item.label;
+          setProductLabels(map);
+        } catch { /* keep defaults */ }
+      });
+  }, []);
 
   async function handleLogout() {
     await supabase.auth.signOut();
@@ -65,7 +81,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 className={`${linkBase} ${active ? linkActive : linkInactive}`}
               >
                 <Icon size={15} />
-                <span className="truncate">{p.label}</span>
+                <span className="truncate">{productLabels[p.slug] || p.label}</span>
               </Link>
             );
           })}
