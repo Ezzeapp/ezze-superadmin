@@ -3,10 +3,12 @@ import { useState, useEffect } from "react";
 import { CreditCard, Settings2, ListChecks, RefreshCw, Plus, X, Zap } from "lucide-react";
 import { supabase } from "../../../lib/supabase";
 
+type PlanNames = { free: string; pro: string; enterprise: string };
 type PlanPrices = { free: number; pro: number; enterprise: number };
 type PlanLimit = { key: string; enabled: boolean; free: number | null; pro: number | null; enterprise: number | null };
 type PlanFeatures = { free: string[]; pro: string[]; enterprise: string[] };
 
+const DEFAULT_NAMES: PlanNames = { free: "Free", pro: "Pro", enterprise: "Enterprise" };
 const DEFAULT_PRICES: PlanPrices = { free: 0, pro: 99000, enterprise: 299000 };
 const DEFAULT_LIMITS: PlanLimit[] = [
   { key: "clients", enabled: true, free: 50, pro: null, enterprise: null },
@@ -30,6 +32,7 @@ export default function BillingSettingsPage() {
   const [saving, setSaving] = useState<string | null>(null);
   const [saved, setSaved] = useState<string | null>(null);
 
+  const [names, setNames] = useState<PlanNames>(DEFAULT_NAMES);
   const [prices, setPrices] = useState<PlanPrices>(DEFAULT_PRICES);
   const [limits, setLimits] = useState<PlanLimit[]>(DEFAULT_LIMITS);
   const [features, setFeatures] = useState<PlanFeatures>(DEFAULT_FEATURES);
@@ -54,11 +57,12 @@ export default function BillingSettingsPage() {
       const { data: settings } = await supabase
         .from("app_settings")
         .select("key, value")
-        .in("key", ["plan_prices", "plan_limits", "plan_features", "payment_providers",
+        .in("key", ["plan_names", "plan_prices", "plan_limits", "plan_features", "payment_providers",
           "payme_merchant_id", "click_service_id", "click_merchant_id", "click_user_id"]);
 
       const existing: Record<string, boolean> = {};
       settings?.forEach(s => {
+        if (s.key === "plan_names") { try { setNames({ ...DEFAULT_NAMES, ...JSON.parse(s.value) }); } catch {} }
         if (s.key === "plan_prices") { try { setPrices({ ...DEFAULT_PRICES, ...JSON.parse(s.value) }); } catch {} }
         if (s.key === "plan_limits") { try { setLimits(JSON.parse(s.value)); } catch {} }
         if (s.key === "plan_features") { try { setFeatures({ ...DEFAULT_FEATURES, ...JSON.parse(s.value) }); } catch {} }
@@ -143,6 +147,46 @@ export default function BillingSettingsPage() {
         <p className="text-sm text-gray-500 mt-1">Управление ценами, лимитами и платёжными провайдерами платформы</p>
       </div>
 
+      {/* === Названия тарифов === */}
+      <div className={section}>
+        <div className="flex items-center gap-3">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-violet-50">
+            <Settings2 size={16} className="text-violet-600" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-gray-900">Названия тарифов</p>
+            <p className="text-xs text-gray-500">Отображаемые названия тарифных планов</p>
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          {(["free", "pro", "enterprise"] as const).map((plan) => (
+            <div key={plan} className="flex items-center gap-3">
+              <span className={`text-xs font-semibold px-2.5 py-1 rounded-full w-24 text-center ${PLAN_COLORS[plan]}`}>
+                {plan.charAt(0).toUpperCase() + plan.slice(1)}
+              </span>
+              <input
+                type="text"
+                value={names[plan]}
+                onChange={e => setNames(prev => ({ ...prev, [plan]: e.target.value }))}
+                placeholder={plan.charAt(0).toUpperCase() + plan.slice(1)}
+                className={`${inp} w-48`}
+              />
+            </div>
+          ))}
+        </div>
+
+        <div>
+          <button
+            onClick={() => saveSection("names", () => upsert("plan_names", JSON.stringify(names)))}
+            disabled={saving === "names"}
+            className={btnSave("names")}
+          >
+            {saved === "names" ? "Сохранено ✓" : saving === "names" ? "Сохраняю..." : "Сохранить"}
+          </button>
+        </div>
+      </div>
+
       {/* === Цены === */}
       <div className={section}>
         <div className="flex items-center gap-3">
@@ -157,9 +201,9 @@ export default function BillingSettingsPage() {
 
         <div className="space-y-3">
           {[
-            { plan: "free", label: "Free", disabled: true },
-            { plan: "pro", label: "Pro" },
-            { plan: "enterprise", label: "Enterprise" },
+            { plan: "free", label: names.free || "Free", disabled: true },
+            { plan: "pro", label: names.pro || "Pro" },
+            { plan: "enterprise", label: names.enterprise || "Enterprise" },
           ].map(({ plan, label, disabled }) => (
             <div key={plan} className="flex items-center gap-3">
               <span className={`text-xs font-semibold px-2.5 py-1 rounded-full w-24 text-center ${PLAN_COLORS[plan]}`}>
