@@ -1,6 +1,6 @@
 import {
   Globe, Scissors, Shirt, Stethoscope, Leaf, GraduationCap,
-  CalendarDays, UtensilsCrossed, Building2, Car, Hammer,
+  CalendarDays, UtensilsCrossed, Building2, Car, Hammer, ShoppingBag,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -22,6 +22,7 @@ export const PRODUCTS: ProductItem[] = [
   { slug: "hotel",     label: "Ezze Hotel",             icon: Building2 },
   { slug: "transport", label: "Ezze Transport",         icon: Car },
   { slug: "build",     label: "Ezze Build",             icon: Hammer },
+  { slug: "trade",     label: "Ezze Trade",             icon: ShoppingBag },
 ];
 
 export const SECTIONS = [
