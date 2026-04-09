@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
-import { Zap, CreditCard, Bot, Mail, Palette, LayoutGrid, Info, Users } from "lucide-react";
+import { Zap, CreditCard, Bot, Mail, Palette, LayoutGrid, Info, Users, KeyRound } from "lucide-react";
 import { supabase, PRODUCTS } from "../lib/supabase";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -10,6 +10,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const pathname = usePathname();
   const [checking, setChecking] = useState(true);
   const [productLabels, setProductLabels] = useState<Record<string, string>>({});
+
+  // Смена пароля
+  const [pwModal, setPwModal] = useState(false);
+  const [newPw, setNewPw] = useState("");
+  const [newPw2, setNewPw2] = useState("");
+  const [pwSaving, setPwSaving] = useState(false);
+  const [pwMsg, setPwMsg] = useState("");
 
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data }) => {
@@ -39,6 +46,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   async function handleLogout() {
     await supabase.auth.signOut();
     router.replace("/login");
+  }
+
+  async function handleChangePassword() {
+    if (newPw.length < 6) { setPwMsg("Минимум 6 символов"); return; }
+    if (newPw !== newPw2) { setPwMsg("Пароли не совпадают"); return; }
+    setPwSaving(true);
+    setPwMsg("");
+    const { error } = await supabase.auth.updateUser({ password: newPw });
+    setPwSaving(false);
+    if (error) {
+      setPwMsg("Ошибка: " + error.message);
+    } else {
+      setPwMsg("✅ Пароль изменён!");
+      setTimeout(() => { setPwModal(false); setNewPw(""); setNewPw2(""); setPwMsg(""); }, 1500);
+    }
   }
 
   if (checking) {
@@ -127,11 +149,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             );
           })}
 
-          {/* Logout */}
-          <div className="p-4">
+          {/* Смена пароля + Выйти */}
+          <div className="p-4 flex flex-col gap-2">
+            <button
+              onClick={() => { setPwModal(true); setPwMsg(""); setNewPw(""); setNewPw2(""); }}
+              className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-indigo-600 dark:text-gray-400 dark:hover:text-indigo-400 transition-colors text-left"
+            >
+              <KeyRound size={13} />
+              Сменить пароль
+            </button>
             <button
               onClick={handleLogout}
-              className="w-full text-sm text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white transition-colors text-left"
+              className="text-sm text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white transition-colors text-left"
             >
               Выйти
             </button>
@@ -141,6 +170,67 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       {/* Content */}
       <main className="flex-1 overflow-auto">{children}</main>
+
+      {/* Модалка смены пароля */}
+      {pwModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl p-6 w-full max-w-sm mx-4">
+            <h2 className="text-base font-semibold text-gray-900 dark:text-white mb-4">
+              🔑 Сменить пароль
+            </h2>
+
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1 block">
+                  Новый пароль
+                </label>
+                <input
+                  type="password"
+                  value={newPw}
+                  onChange={(e) => setNewPw(e.target.value)}
+                  placeholder="Минимум 6 символов"
+                  className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1 block">
+                  Повторите пароль
+                </label>
+                <input
+                  type="password"
+                  value={newPw2}
+                  onChange={(e) => setNewPw2(e.target.value)}
+                  placeholder="Повторите новый пароль"
+                  onKeyDown={(e) => e.key === "Enter" && handleChangePassword()}
+                  className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+
+              {pwMsg && (
+                <p className={`text-sm ${pwMsg.startsWith("✅") ? "text-green-600" : "text-red-500"}`}>
+                  {pwMsg}
+                </p>
+              )}
+            </div>
+
+            <div className="flex gap-2 mt-5">
+              <button
+                onClick={handleChangePassword}
+                disabled={pwSaving}
+                className="flex-1 py-2 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+              >
+                {pwSaving ? "Сохраняем..." : "Сохранить"}
+              </button>
+              <button
+                onClick={() => setPwModal(false)}
+                className="flex-1 py-2 rounded-lg border border-gray-200 dark:border-gray-700 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+              >
+                Отмена
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
