@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
-import { Zap, CreditCard, Bot, Mail, Palette, LayoutGrid, Info } from "lucide-react";
+import { Zap, CreditCard, Bot, Mail, Palette, LayoutGrid, Info, Users } from "lucide-react";
 import { supabase, PRODUCTS } from "../lib/supabase";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -86,6 +86,20 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             );
           })}
         </nav>
+
+        {/* Users */}
+        <div className="border-t border-gray-200 dark:border-gray-800">
+          <div className="px-4 pt-3 pb-1">
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-600">Пользователи</p>
+          </div>
+          <Link
+            href="/dashboard/masters"
+            className={`${linkBase} ${pathname.startsWith("/dashboard/masters") ? linkActive : linkInactive}`}
+          >
+            <Users size={14} />
+            <span className="truncate">Мастера</span>
+          </Link>
+        </div>
 
         {/* Platform settings */}
         <div className="border-t border-gray-200 dark:border-gray-800">
