@@ -187,18 +187,18 @@ export default function MastersPage() {
         />
       </div>
 
-      {/* Таблица */}
-      <div className="rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-        <table className="w-full text-sm">
+      {/* Таблица — overflow-visible чтобы dropdown не обрезался */}
+      <div className="rounded-xl border border-gray-200 dark:border-gray-700 overflow-visible">
+        <table className="w-full text-sm border-collapse">
           <thead>
             <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
-              <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Мастер</th>
+              <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide rounded-tl-xl">Мастер</th>
               <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Профессия</th>
               <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Продукт</th>
               <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Тариф</th>
               <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Дата</th>
               <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Статус</th>
-              <th className="px-4 py-3" />
+              <th className="px-4 py-3 rounded-tr-xl" />
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100 dark:divide-gray-700/50">
