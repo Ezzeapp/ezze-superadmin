@@ -131,26 +131,16 @@ export default function MastersPage() {
     setDeleting(true);
     setDeleteError("");
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token;
-      if (!token) throw new Error("Нет сессии");
+      const { data, error } = await supabase.functions.invoke("admin-delete-user", {
+        body: { userId: deleteTarget.id },
+      });
 
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/admin-delete-user`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "apikey": process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ userId: deleteTarget.id }),
-        }
-      );
-
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ message: res.statusText }));
-        throw new Error(err.message || "Ошибка удаления");
+      if (error) {
+        const msg = (error as { message?: string })?.message || "Ошибка удаления";
+        throw new Error(msg);
+      }
+      if (data?.message && data.message !== "ok") {
+        throw new Error(data.message);
       }
 
       // Убираем из списка
