@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useMemo } from "react";
-import { Search, ChevronDown, RefreshCw, Users } from "lucide-react";
+import { Search, ChevronDown, RefreshCw, Users, Trash2 } from "lucide-react";
 import { supabase, PRODUCTS } from "../../lib/supabase";
 
 // Продукты без "main" (ezze.site — там нет мастеров)
@@ -48,6 +48,11 @@ export default function MastersPage() {
   const [total, setTotal] = useState(0);
   const [actionOpen, setActionOpen] = useState<string | null>(null);
   const [saving, setSaving] = useState<string | null>(null);
+
+  // Удаление
+  const [deleteTarget, setDeleteTarget] = useState<Master | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
 
   useEffect(() => {
     loadMasters();
@@ -118,6 +123,43 @@ export default function MastersPage() {
     } finally {
       setSaving(null);
       setActionOpen(null);
+    }
+  }
+
+  async function confirmDelete() {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    setDeleteError("");
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) throw new Error("Нет сессии");
+
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/admin-delete-user`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ userId: deleteTarget.id }),
+        }
+      );
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ message: res.statusText }));
+        throw new Error(err.message || "Ошибка удаления");
+      }
+
+      // Убираем из списка
+      setMasters((prev) => prev.filter((m) => m.id !== deleteTarget.id));
+      setTotal((t) => t - 1);
+      setDeleteTarget(null);
+    } catch (e: unknown) {
+      setDeleteError(e instanceof Error ? e.message : "Ошибка");
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -316,6 +358,21 @@ export default function MastersPage() {
                                 {master.disabled ? "✅ Включить" : "🚫 Отключить"}
                               </button>
                             </div>
+
+                            {/* Удалить */}
+                            <div className="border-t border-gray-100 dark:border-gray-700">
+                              <button
+                                onClick={() => {
+                                  setActionOpen(null);
+                                  setDeleteError("");
+                                  setDeleteTarget(master);
+                                }}
+                                className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors flex items-center gap-2"
+                              >
+                                <Trash2 size={13} />
+                                Удалить аккаунт
+                              </button>
+                            </div>
                           </div>
                         )}
                       </div>
@@ -359,6 +416,53 @@ export default function MastersPage() {
       {/* Закрыть dropdown при клике вне */}
       {actionOpen && (
         <div className="fixed inset-0 z-0" onClick={() => setActionOpen(null)} />
+      )}
+
+      {/* Модалка подтверждения удаления */}
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl p-6 w-full max-w-sm mx-4">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center shrink-0">
+                <Trash2 size={18} className="text-red-600" />
+              </div>
+              <div>
+                <h2 className="text-base font-semibold text-gray-900 dark:text-white">
+                  Удалить аккаунт?
+                </h2>
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  {deleteTarget.master_profiles?.display_name || "—"}
+                </p>
+              </div>
+            </div>
+
+            <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">
+              Все данные мастера будут удалены безвозвратно: профиль, услуги, записи, клиенты.
+              Мастер получит уведомление в Telegram.
+            </p>
+
+            {deleteError && (
+              <p className="text-sm text-red-500 mb-3">⚠️ {deleteError}</p>
+            )}
+
+            <div className="flex gap-2">
+              <button
+                onClick={confirmDelete}
+                disabled={deleting}
+                className="flex-1 py-2 rounded-lg bg-red-600 text-white text-sm font-medium hover:bg-red-700 disabled:opacity-50 transition-colors"
+              >
+                {deleting ? "Удаляем..." : "Да, удалить"}
+              </button>
+              <button
+                onClick={() => { setDeleteTarget(null); setDeleteError(""); }}
+                disabled={deleting}
+                className="flex-1 py-2 rounded-lg border border-gray-200 dark:border-gray-700 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+              >
+                Отмена
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
