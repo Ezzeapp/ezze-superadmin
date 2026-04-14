@@ -96,6 +96,7 @@ export default function ProductsSettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [saveError, setSaveError] = useState("");
   // Use index-based state to correctly handle new products with empty slugs
   const [iconPickerIdx, setIconPickerIdx] = useState<number | null>(null);
   const [expandedIdx, setExpandedIdx] = useState<number | null>(null);
@@ -104,6 +105,7 @@ export default function ProductsSettingsPage() {
     supabase
       .from("app_settings")
       .select("value")
+      .eq("product", "main")
       .eq("key", "products_config")
       .single()
       .then(({ data }) => {
@@ -162,13 +164,18 @@ export default function ProductsSettingsPage() {
   async function handleSave() {
     setSaving(true);
     setSaved(false);
-    await supabase.from("app_settings").upsert(
-      { key: "products_config", value: JSON.stringify(items) },
-      { onConflict: "key" }
+    setSaveError("");
+    const { error } = await supabase.from("app_settings").upsert(
+      { product: "main", key: "products_config", value: JSON.stringify(items) },
+      { onConflict: "product,key" }
     );
     setSaving(false);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
+    if (error) {
+      setSaveError("Ошибка сохранения: " + error.message);
+    } else {
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+    }
   }
 
   if (loading) {
@@ -375,22 +382,27 @@ export default function ProductsSettingsPage() {
       </div>
 
       {/* Save */}
-      <div className="flex items-center gap-4">
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className={`flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-            saved
-              ? "bg-green-600 text-white"
-              : "bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50"
-          }`}
-        >
-          {saved && <Check size={15} />}
-          {saving ? "Сохранение..." : saved ? "Сохранено!" : "Сохранить конфигурацию"}
-        </button>
-        <p className="text-xs text-gray-400 dark:text-gray-600">
-          Изменения применяются на ezze.site сразу после сохранения
-        </p>
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center gap-4">
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className={`flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+              saved
+                ? "bg-green-600 text-white"
+                : "bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50"
+            }`}
+          >
+            {saved && <Check size={15} />}
+            {saving ? "Сохранение..." : saved ? "Сохранено!" : "Сохранить конфигурацию"}
+          </button>
+          <p className="text-xs text-gray-400 dark:text-gray-600">
+            Изменения применяются на ezze.site сразу после сохранения
+          </p>
+        </div>
+        {saveError && (
+          <p className="text-sm text-red-600 dark:text-red-400">{saveError}</p>
+        )}
       </div>
     </div>
   );
