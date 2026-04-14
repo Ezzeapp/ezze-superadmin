@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
-import { Zap, CreditCard, Bot, Mail, Palette, LayoutGrid, Info, Users, KeyRound } from "lucide-react";
+import { Zap, CreditCard, Bot, Mail, Palette, LayoutGrid, Info, Users, KeyRound, BookOpen } from "lucide-react";
 import { supabase, PRODUCTS } from "../lib/supabase";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -120,6 +120,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           >
             <Users size={14} />
             <span className="truncate">Мастера</span>
+          </Link>
+          <Link
+            href="/dashboard/catalog"
+            className={`${linkBase} ${pathname.startsWith("/dashboard/catalog") ? linkActive : linkInactive}`}
+          >
+            <BookOpen size={14} />
+            <span className="truncate">Справочник</span>
           </Link>
         </div>
 
