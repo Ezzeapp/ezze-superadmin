@@ -112,10 +112,10 @@ export default function ProductsSettingsPage() {
             if (Array.isArray(parsed) && parsed.length > 0) {
               // Ensure all items have description/color/features fields
               setItems(parsed.map(p => ({
-                description: "",
-                color: "from-indigo-500 to-purple-600",
-                features: [],
                 ...p,
+                description: p.description ?? "",
+                color: p.color ?? "from-indigo-500 to-purple-600",
+                features: p.features ?? [],
               })));
             }
           } catch { /* keep empty */ }
