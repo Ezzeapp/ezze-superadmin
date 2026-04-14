@@ -96,8 +96,9 @@ export default function ProductsSettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [iconPickerSlug, setIconPickerSlug] = useState<string | null>(null);
-  const [expandedSlug, setExpandedSlug] = useState<string | null>(null);
+  // Use index-based state to correctly handle new products with empty slugs
+  const [iconPickerIdx, setIconPickerIdx] = useState<number | null>(null);
+  const [expandedIdx, setExpandedIdx] = useState<number | null>(null);
 
   useEffect(() => {
     supabase
@@ -110,7 +111,6 @@ export default function ProductsSettingsPage() {
           try {
             const parsed: ProductConfig[] = JSON.parse(data.value);
             if (Array.isArray(parsed) && parsed.length > 0) {
-              // Ensure all items have description/color/features fields
               setItems(parsed.map(p => ({
                 ...p,
                 description: p.description ?? "",
@@ -129,24 +129,33 @@ export default function ProductsSettingsPage() {
     const target = index + dir;
     if (target < 0 || target >= next.length) return;
     [next[index], next[target]] = [next[target], next[index]];
+    // Keep expanded/iconPicker pointing to the moved item
+    if (expandedIdx === index) setExpandedIdx(target);
+    else if (expandedIdx === target) setExpandedIdx(index);
+    if (iconPickerIdx === index) setIconPickerIdx(target);
+    else if (iconPickerIdx === target) setIconPickerIdx(index);
     setItems(next);
     setSaved(false);
   }
 
-  function update(slug: string, patch: Partial<ProductConfig>) {
-    setItems((prev) => prev.map((p) => p.slug === slug ? { ...p, ...patch } : p));
+  function update(index: number, patch: Partial<ProductConfig>) {
+    setItems((prev) => prev.map((p, i) => i === index ? { ...p, ...patch } : p));
     setSaved(false);
   }
 
   function addProduct() {
-    const p = newProduct();
-    setItems((prev) => [...prev, p]);
-    setExpandedSlug("__new__" + Date.now());
+    setItems((prev) => {
+      const next = [...prev, newProduct()];
+      setExpandedIdx(next.length - 1);
+      return next;
+    });
     setSaved(false);
   }
 
-  function removeProduct(slug: string) {
-    setItems((prev) => prev.filter((p) => p.slug !== slug));
+  function removeProduct(index: number) {
+    setItems((prev) => prev.filter((_, i) => i !== index));
+    if (expandedIdx === index) setExpandedIdx(null);
+    if (iconPickerIdx === index) setIconPickerIdx(null);
     setSaved(false);
   }
 
@@ -190,10 +199,11 @@ export default function ProductsSettingsPage() {
       <div className="space-y-2 mb-6">
         {items.map((item, i) => {
           const Icon = getIconComponent(item.iconName);
-          const isExpanded = expandedSlug === item.slug || (item.slug === "" && expandedSlug?.startsWith("__new__"));
+          const isExpanded = expandedIdx === i;
+          const isIconOpen = iconPickerIdx === i;
           return (
             <div
-              key={item.slug || `new-${i}`}
+              key={i}
               className={`rounded-xl border transition-opacity ${
                 item.hidden
                   ? "border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 opacity-60"
@@ -216,7 +226,7 @@ export default function ProductsSettingsPage() {
 
                 {/* Icon + color preview */}
                 <button
-                  onClick={() => setIconPickerSlug(iconPickerSlug === (item.slug || `new-${i}`) ? null : (item.slug || `new-${i}`))}
+                  onClick={() => setIconPickerIdx(isIconOpen ? null : i)}
                   className={`w-10 h-10 rounded-lg bg-gradient-to-br ${item.color} flex items-center justify-center shrink-0 hover:opacity-80 transition-opacity border-2 border-transparent hover:border-white/50`}
                   title="Сменить иконку"
                 >
@@ -227,25 +237,25 @@ export default function ProductsSettingsPage() {
                 <div className="flex-1 min-w-0 flex flex-col gap-1">
                   <input
                     value={item.label}
-                    onChange={(e) => update(item.slug || `new-${i}`, { label: e.target.value })}
+                    onChange={(e) => update(i, { label: e.target.value })}
                     className="w-full text-sm font-medium bg-transparent border-b border-transparent hover:border-gray-300 dark:hover:border-gray-600 focus:border-indigo-500 focus:outline-none text-gray-900 dark:text-white transition-colors"
                     placeholder="Название продукта"
                   />
                   <input
                     value={item.url}
-                    onChange={(e) => update(item.slug || `new-${i}`, { url: e.target.value })}
+                    onChange={(e) => update(i, { url: e.target.value })}
                     className="w-full text-xs bg-transparent border-b border-transparent hover:border-gray-300 dark:hover:border-gray-600 focus:border-indigo-500 focus:outline-none text-gray-400 dark:text-gray-500 transition-colors font-mono"
                     placeholder="URL приложения"
                   />
                 </div>
 
-                {/* Slug */}
+                {/* Slug — editable for new products, readonly badge for existing */}
                 {item.slug ? (
                   <span className="text-xs text-gray-400 dark:text-gray-600 font-mono shrink-0">/{item.slug}</span>
                 ) : (
                   <input
                     value={item.slug}
-                    onChange={(e) => update(`new-${i}`, { slug: e.target.value.toLowerCase().replace(/[^a-z0-9]/g, "") })}
+                    onChange={(e) => update(i, { slug: e.target.value.toLowerCase().replace(/[^a-z0-9]/g, "") })}
                     className="w-20 text-xs font-mono bg-transparent border border-gray-300 dark:border-gray-600 rounded px-2 py-1 focus:border-indigo-500 focus:outline-none text-gray-600 dark:text-gray-400"
                     placeholder="slug"
                   />
@@ -253,7 +263,7 @@ export default function ProductsSettingsPage() {
 
                 {/* Coming soon */}
                 <button
-                  onClick={() => update(item.slug || `new-${i}`, { comingSoon: !item.comingSoon })}
+                  onClick={() => update(i, { comingSoon: !item.comingSoon })}
                   className={`text-xs px-2 py-1 rounded-full border shrink-0 transition-colors ${
                     item.comingSoon
                       ? "border-amber-400 text-amber-600 bg-amber-50 dark:bg-amber-900/20 dark:text-amber-400"
@@ -265,16 +275,16 @@ export default function ProductsSettingsPage() {
 
                 {/* Hide/show */}
                 <button
-                  onClick={() => update(item.slug || `new-${i}`, { hidden: !item.hidden })}
+                  onClick={() => update(i, { hidden: !item.hidden })}
                   className="p-1.5 rounded text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 shrink-0"
                   title={item.hidden ? "Показать" : "Скрыть"}
                 >
                   {item.hidden ? <Eye size={16} /> : <EyeOff size={16} />}
                 </button>
 
-                {/* Expand */}
+                {/* Expand details */}
                 <button
-                  onClick={() => setExpandedSlug(isExpanded ? null : (item.slug || `__new__${i}`))}
+                  onClick={() => setExpandedIdx(isExpanded ? null : i)}
                   className="p-1.5 rounded text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 shrink-0"
                   title="Описание и фичи"
                 >
@@ -283,7 +293,7 @@ export default function ProductsSettingsPage() {
 
                 {/* Delete */}
                 <button
-                  onClick={() => removeProduct(item.slug || `new-${i}`)}
+                  onClick={() => removeProduct(i)}
                   className="p-1.5 rounded text-gray-300 hover:text-red-500 dark:text-gray-600 dark:hover:text-red-400 shrink-0"
                   title="Удалить продукт"
                 >
@@ -294,25 +304,22 @@ export default function ProductsSettingsPage() {
               {/* Expanded: description, color, features */}
               {isExpanded && (
                 <div className="px-4 pb-4 border-t border-gray-100 dark:border-gray-800 pt-3 space-y-3">
-                  {/* Description */}
                   <div>
                     <label className="text-xs font-medium text-gray-500 dark:text-gray-400 block mb-1">Описание</label>
                     <input
                       value={item.description}
-                      onChange={(e) => update(item.slug || `new-${i}`, { description: e.target.value })}
+                      onChange={(e) => update(i, { description: e.target.value })}
                       className="w-full text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 focus:border-indigo-500 focus:outline-none text-gray-700 dark:text-gray-300"
                       placeholder="Краткое описание продукта для лендинга"
                     />
                   </div>
-
-                  {/* Color */}
                   <div>
                     <label className="text-xs font-medium text-gray-500 dark:text-gray-400 block mb-1">Цвет иконки</label>
                     <div className="flex flex-wrap gap-2">
                       {COLOR_OPTIONS.map((c) => (
                         <button
                           key={c.value}
-                          onClick={() => update(item.slug || `new-${i}`, { color: c.value })}
+                          onClick={() => update(i, { color: c.value })}
                           title={c.label}
                           className={`w-7 h-7 rounded-lg bg-gradient-to-br ${c.value} transition-all ${
                             item.color === c.value ? "ring-2 ring-indigo-500 ring-offset-1 scale-110" : "hover:scale-105"
@@ -321,15 +328,13 @@ export default function ProductsSettingsPage() {
                       ))}
                     </div>
                   </div>
-
-                  {/* Features */}
                   <div>
                     <label className="text-xs font-medium text-gray-500 dark:text-gray-400 block mb-1">
                       Фичи (по одной на строке, макс. 4)
                     </label>
                     <textarea
                       value={item.features.join("\n")}
-                      onChange={(e) => update(item.slug || `new-${i}`, {
+                      onChange={(e) => update(i, {
                         features: e.target.value.split("\n").map(s => s.trim()).filter(Boolean).slice(0, 4)
                       })}
                       rows={4}
@@ -341,7 +346,7 @@ export default function ProductsSettingsPage() {
               )}
 
               {/* Icon picker */}
-              {iconPickerSlug === (item.slug || `new-${i}`) && (
+              {isIconOpen && (
                 <div className="px-4 pb-4 border-t border-indigo-100 dark:border-indigo-900 pt-3">
                   <p className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 mb-2 uppercase tracking-wide">
                     Выберите иконку
@@ -350,10 +355,7 @@ export default function ProductsSettingsPage() {
                     {ICON_OPTIONS.map(({ name, icon: Ico }) => (
                       <button
                         key={name}
-                        onClick={() => {
-                          update(item.slug || `new-${i}`, { iconName: name });
-                          setIconPickerSlug(null);
-                        }}
+                        onClick={() => { update(i, { iconName: name }); setIconPickerIdx(null); }}
                         title={name}
                         className={`w-9 h-9 flex items-center justify-center rounded-lg border transition-colors ${
                           item.iconName === name
@@ -372,7 +374,7 @@ export default function ProductsSettingsPage() {
         })}
       </div>
 
-      {/* Save button */}
+      {/* Save */}
       <div className="flex items-center gap-4">
         <button
           onClick={handleSave}
