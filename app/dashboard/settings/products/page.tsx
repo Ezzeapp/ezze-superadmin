@@ -5,43 +5,60 @@ import {
   UtensilsCrossed, Building2, Car, Hammer, Globe, Zap, ShoppingBag,
   Heart, Dumbbell, Package, Truck, Hotel, Camera, Music, Dog, Flower2,
   Wrench, Cpu, BookOpen, Coffee, Bike, Baby, Store, ClipboardList,
-  ChevronUp, ChevronDown, EyeOff, Eye, Check, LayoutGrid,
+  WashingMachine, ChevronUp, ChevronDown, EyeOff, Eye, Check, LayoutGrid,
+  Plus, Trash2,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { supabase, PRODUCTS } from "../../../lib/supabase";
+import { supabase } from "../../../lib/supabase";
 
-// All icons available to choose from
 const ICON_OPTIONS: { name: string; icon: LucideIcon }[] = [
-  { name: "Globe", icon: Globe },
-  { name: "Scissors", icon: Scissors },
-  { name: "Shirt", icon: Shirt },
-  { name: "Stethoscope", icon: Stethoscope },
-  { name: "Leaf", icon: Leaf },
-  { name: "GraduationCap", icon: GraduationCap },
-  { name: "CalendarDays", icon: CalendarDays },
+  { name: "Globe",           icon: Globe },
+  { name: "Scissors",        icon: Scissors },
+  { name: "Wrench",          icon: Wrench },
+  { name: "WashingMachine",  icon: WashingMachine },
+  { name: "Stethoscope",     icon: Stethoscope },
+  { name: "Leaf",            icon: Leaf },
+  { name: "GraduationCap",   icon: GraduationCap },
+  { name: "CalendarDays",    icon: CalendarDays },
   { name: "UtensilsCrossed", icon: UtensilsCrossed },
-  { name: "Building2", icon: Building2 },
-  { name: "Car", icon: Car },
-  { name: "Hammer", icon: Hammer },
-  { name: "Zap", icon: Zap },
-  { name: "ShoppingBag", icon: ShoppingBag },
-  { name: "Heart", icon: Heart },
-  { name: "Dumbbell", icon: Dumbbell },
-  { name: "Package", icon: Package },
-  { name: "Truck", icon: Truck },
-  { name: "Hotel", icon: Hotel },
-  { name: "Camera", icon: Camera },
-  { name: "Music", icon: Music },
-  { name: "Dog", icon: Dog },
-  { name: "Flower2", icon: Flower2 },
-  { name: "Wrench", icon: Wrench },
-  { name: "Cpu", icon: Cpu },
-  { name: "BookOpen", icon: BookOpen },
-  { name: "Coffee", icon: Coffee },
-  { name: "Bike", icon: Bike },
-  { name: "Baby", icon: Baby },
-  { name: "Store", icon: Store },
-  { name: "ClipboardList", icon: ClipboardList },
+  { name: "Building2",       icon: Building2 },
+  { name: "Car",             icon: Car },
+  { name: "Hammer",          icon: Hammer },
+  { name: "ShoppingBag",     icon: ShoppingBag },
+  { name: "Zap",             icon: Zap },
+  { name: "Heart",           icon: Heart },
+  { name: "Dumbbell",        icon: Dumbbell },
+  { name: "Package",         icon: Package },
+  { name: "Truck",           icon: Truck },
+  { name: "Hotel",           icon: Hotel },
+  { name: "Camera",          icon: Camera },
+  { name: "Music",           icon: Music },
+  { name: "Dog",             icon: Dog },
+  { name: "Flower2",         icon: Flower2 },
+  { name: "Cpu",             icon: Cpu },
+  { name: "BookOpen",        icon: BookOpen },
+  { name: "Coffee",          icon: Coffee },
+  { name: "Bike",            icon: Bike },
+  { name: "Baby",            icon: Baby },
+  { name: "Store",           icon: Store },
+  { name: "ClipboardList",   icon: ClipboardList },
+  { name: "Shirt",           icon: Shirt },
+];
+
+const COLOR_OPTIONS = [
+  { label: "Розово-фиолетовый", value: "from-pink-500 to-purple-600" },
+  { label: "Сине-голубой",      value: "from-blue-500 to-cyan-600" },
+  { label: "Зелёный",           value: "from-green-500 to-teal-600" },
+  { label: "Жёлто-оранжевый",   value: "from-yellow-500 to-orange-600" },
+  { label: "Индиго-синий",      value: "from-indigo-500 to-blue-600" },
+  { label: "Индиго-фиолетовый", value: "from-indigo-500 to-purple-600" },
+  { label: "Фиолетовый",        value: "from-violet-500 to-purple-600" },
+  { label: "Красно-оранжевый",  value: "from-red-500 to-orange-600" },
+  { label: "Голубой",           value: "from-sky-500 to-blue-600" },
+  { label: "Янтарно-оранжевый", value: "from-amber-500 to-orange-600" },
+  { label: "Серый",             value: "from-stone-500 to-gray-600" },
+  { label: "Изумрудный",        value: "from-emerald-500 to-green-600" },
+  { label: "Циановый",          value: "from-cyan-500 to-blue-600" },
 ];
 
 function getIconComponent(name: string): LucideIcon {
@@ -55,30 +72,32 @@ interface ProductConfig {
   url: string;
   hidden: boolean;
   comingSoon: boolean;
+  description: string;
+  color: string;
+  features: string[];
 }
 
-function buildDefaults(): ProductConfig[] {
-  const iconMap: Record<string, string> = {
-    main: "Globe", beauty: "Scissors", workshop: "Shirt", clinic: "Stethoscope",
-    farm: "Leaf", edu: "GraduationCap", event: "CalendarDays", food: "UtensilsCrossed",
-    hotel: "Building2", transport: "Car", build: "Hammer",
-  };
-  return PRODUCTS.map((p) => ({
-    slug: p.slug,
-    label: p.label,
-    iconName: iconMap[p.slug] ?? "Globe",
-    url: "https://pro.ezze.site",
+function newProduct(): ProductConfig {
+  return {
+    slug: "",
+    label: "",
+    iconName: "Globe",
+    url: "https://.ezze.site",
     hidden: false,
-    comingSoon: false,
-  }));
+    comingSoon: true,
+    description: "",
+    color: "from-indigo-500 to-purple-600",
+    features: [],
+  };
 }
 
 export default function ProductsSettingsPage() {
-  const [items, setItems] = useState<ProductConfig[]>(buildDefaults());
+  const [items, setItems] = useState<ProductConfig[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [iconPickerSlug, setIconPickerSlug] = useState<string | null>(null);
+  const [expandedSlug, setExpandedSlug] = useState<string | null>(null);
 
   useEffect(() => {
     supabase
@@ -91,9 +110,15 @@ export default function ProductsSettingsPage() {
           try {
             const parsed: ProductConfig[] = JSON.parse(data.value);
             if (Array.isArray(parsed) && parsed.length > 0) {
-              setItems(parsed);
+              // Ensure all items have description/color/features fields
+              setItems(parsed.map(p => ({
+                description: "",
+                color: "from-indigo-500 to-purple-600",
+                features: [],
+                ...p,
+              })));
             }
-          } catch { /* keep defaults */ }
+          } catch { /* keep empty */ }
         }
         setLoading(false);
       });
@@ -110,6 +135,18 @@ export default function ProductsSettingsPage() {
 
   function update(slug: string, patch: Partial<ProductConfig>) {
     setItems((prev) => prev.map((p) => p.slug === slug ? { ...p, ...patch } : p));
+    setSaved(false);
+  }
+
+  function addProduct() {
+    const p = newProduct();
+    setItems((prev) => [...prev, p]);
+    setExpandedSlug("__new__" + Date.now());
+    setSaved(false);
+  }
+
+  function removeProduct(slug: string) {
+    setItems((prev) => prev.filter((p) => p.slug !== slug));
     setSaved(false);
   }
 
@@ -131,151 +168,228 @@ export default function ProductsSettingsPage() {
 
   return (
     <div className="p-8 max-w-3xl">
-      <div className="flex items-center gap-3 mb-6">
-        <LayoutGrid size={22} className="text-indigo-600 dark:text-indigo-400" />
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Управление продуктами</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-            Изменения применяются на ezze.site после следующего деплоя лендинга
-          </p>
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-3">
+          <LayoutGrid size={22} className="text-indigo-600 dark:text-indigo-400" />
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Управление продуктами</h1>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+              Изменения применяются на ezze.site автоматически (без деплоя)
+            </p>
+          </div>
         </div>
+        <button
+          onClick={addProduct}
+          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 transition-colors"
+        >
+          <Plus size={15} />
+          Добавить продукт
+        </button>
       </div>
 
       <div className="space-y-2 mb-6">
         {items.map((item, i) => {
           const Icon = getIconComponent(item.iconName);
+          const isExpanded = expandedSlug === item.slug || (item.slug === "" && expandedSlug?.startsWith("__new__"));
           return (
             <div
-              key={item.slug}
-              className={`rounded-xl border p-4 flex items-center gap-4 transition-opacity ${
+              key={item.slug || `new-${i}`}
+              className={`rounded-xl border transition-opacity ${
                 item.hidden
                   ? "border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 opacity-60"
                   : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900"
               }`}
             >
-              {/* Reorder */}
-              <div className="flex flex-col gap-0.5 shrink-0">
+              {/* Compact row */}
+              <div className="p-4 flex items-center gap-3">
+                {/* Reorder */}
+                <div className="flex flex-col gap-0.5 shrink-0">
+                  <button onClick={() => move(i, -1)} disabled={i === 0}
+                    className="p-1 rounded text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 disabled:opacity-20">
+                    <ChevronUp size={14} />
+                  </button>
+                  <button onClick={() => move(i, 1)} disabled={i === items.length - 1}
+                    className="p-1 rounded text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 disabled:opacity-20">
+                    <ChevronDown size={14} />
+                  </button>
+                </div>
+
+                {/* Icon + color preview */}
                 <button
-                  onClick={() => move(i, -1)}
-                  disabled={i === 0}
-                  className="p-1 rounded text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 disabled:opacity-20"
+                  onClick={() => setIconPickerSlug(iconPickerSlug === (item.slug || `new-${i}`) ? null : (item.slug || `new-${i}`))}
+                  className={`w-10 h-10 rounded-lg bg-gradient-to-br ${item.color} flex items-center justify-center shrink-0 hover:opacity-80 transition-opacity border-2 border-transparent hover:border-white/50`}
+                  title="Сменить иконку"
                 >
-                  <ChevronUp size={14} />
+                  <Icon size={20} className="text-white" />
                 </button>
+
+                {/* Label + URL */}
+                <div className="flex-1 min-w-0 flex flex-col gap-1">
+                  <input
+                    value={item.label}
+                    onChange={(e) => update(item.slug || `new-${i}`, { label: e.target.value })}
+                    className="w-full text-sm font-medium bg-transparent border-b border-transparent hover:border-gray-300 dark:hover:border-gray-600 focus:border-indigo-500 focus:outline-none text-gray-900 dark:text-white transition-colors"
+                    placeholder="Название продукта"
+                  />
+                  <input
+                    value={item.url}
+                    onChange={(e) => update(item.slug || `new-${i}`, { url: e.target.value })}
+                    className="w-full text-xs bg-transparent border-b border-transparent hover:border-gray-300 dark:hover:border-gray-600 focus:border-indigo-500 focus:outline-none text-gray-400 dark:text-gray-500 transition-colors font-mono"
+                    placeholder="URL приложения"
+                  />
+                </div>
+
+                {/* Slug */}
+                {item.slug ? (
+                  <span className="text-xs text-gray-400 dark:text-gray-600 font-mono shrink-0">/{item.slug}</span>
+                ) : (
+                  <input
+                    value={item.slug}
+                    onChange={(e) => update(`new-${i}`, { slug: e.target.value.toLowerCase().replace(/[^a-z0-9]/g, "") })}
+                    className="w-20 text-xs font-mono bg-transparent border border-gray-300 dark:border-gray-600 rounded px-2 py-1 focus:border-indigo-500 focus:outline-none text-gray-600 dark:text-gray-400"
+                    placeholder="slug"
+                  />
+                )}
+
+                {/* Coming soon */}
                 <button
-                  onClick={() => move(i, 1)}
-                  disabled={i === items.length - 1}
-                  className="p-1 rounded text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 disabled:opacity-20"
+                  onClick={() => update(item.slug || `new-${i}`, { comingSoon: !item.comingSoon })}
+                  className={`text-xs px-2 py-1 rounded-full border shrink-0 transition-colors ${
+                    item.comingSoon
+                      ? "border-amber-400 text-amber-600 bg-amber-50 dark:bg-amber-900/20 dark:text-amber-400"
+                      : "border-gray-200 dark:border-gray-700 text-gray-400 dark:text-gray-600 hover:border-gray-300"
+                  }`}
                 >
-                  <ChevronDown size={14} />
+                  {item.comingSoon ? "Скоро" : "Активен"}
+                </button>
+
+                {/* Hide/show */}
+                <button
+                  onClick={() => update(item.slug || `new-${i}`, { hidden: !item.hidden })}
+                  className="p-1.5 rounded text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 shrink-0"
+                  title={item.hidden ? "Показать" : "Скрыть"}
+                >
+                  {item.hidden ? <Eye size={16} /> : <EyeOff size={16} />}
+                </button>
+
+                {/* Expand */}
+                <button
+                  onClick={() => setExpandedSlug(isExpanded ? null : (item.slug || `__new__${i}`))}
+                  className="p-1.5 rounded text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 shrink-0"
+                  title="Описание и фичи"
+                >
+                  <ChevronDown size={16} className={`transition-transform ${isExpanded ? "rotate-180" : ""}`} />
+                </button>
+
+                {/* Delete */}
+                <button
+                  onClick={() => removeProduct(item.slug || `new-${i}`)}
+                  className="p-1.5 rounded text-gray-300 hover:text-red-500 dark:text-gray-600 dark:hover:text-red-400 shrink-0"
+                  title="Удалить продукт"
+                >
+                  <Trash2 size={15} />
                 </button>
               </div>
 
-              {/* Icon picker trigger */}
-              <button
-                onClick={() => setIconPickerSlug(iconPickerSlug === item.slug ? null : item.slug)}
-                className="w-10 h-10 rounded-lg bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center shrink-0 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors border-2 border-transparent hover:border-indigo-300 dark:hover:border-indigo-600"
-                title="Сменить иконку"
-              >
-                <Icon size={20} className="text-indigo-600 dark:text-indigo-400" />
-              </button>
+              {/* Expanded: description, color, features */}
+              {isExpanded && (
+                <div className="px-4 pb-4 border-t border-gray-100 dark:border-gray-800 pt-3 space-y-3">
+                  {/* Description */}
+                  <div>
+                    <label className="text-xs font-medium text-gray-500 dark:text-gray-400 block mb-1">Описание</label>
+                    <input
+                      value={item.description}
+                      onChange={(e) => update(item.slug || `new-${i}`, { description: e.target.value })}
+                      className="w-full text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 focus:border-indigo-500 focus:outline-none text-gray-700 dark:text-gray-300"
+                      placeholder="Краткое описание продукта для лендинга"
+                    />
+                  </div>
 
-              {/* Name + URL */}
-              <div className="flex-1 min-w-0 flex flex-col gap-1.5">
-                <input
-                  value={item.label}
-                  onChange={(e) => update(item.slug, { label: e.target.value })}
-                  className="w-full text-sm font-medium bg-transparent border-b border-transparent hover:border-gray-300 dark:hover:border-gray-600 focus:border-indigo-500 focus:outline-none text-gray-900 dark:text-white transition-colors"
-                  placeholder="Название продукта"
-                />
-                <input
-                  value={item.url}
-                  onChange={(e) => update(item.slug, { url: e.target.value })}
-                  className="w-full text-xs bg-transparent border-b border-transparent hover:border-gray-300 dark:hover:border-gray-600 focus:border-indigo-500 focus:outline-none text-gray-400 dark:text-gray-500 transition-colors font-mono"
-                  placeholder="URL приложения"
-                />
-              </div>
+                  {/* Color */}
+                  <div>
+                    <label className="text-xs font-medium text-gray-500 dark:text-gray-400 block mb-1">Цвет иконки</label>
+                    <div className="flex flex-wrap gap-2">
+                      {COLOR_OPTIONS.map((c) => (
+                        <button
+                          key={c.value}
+                          onClick={() => update(item.slug || `new-${i}`, { color: c.value })}
+                          title={c.label}
+                          className={`w-7 h-7 rounded-lg bg-gradient-to-br ${c.value} transition-all ${
+                            item.color === c.value ? "ring-2 ring-indigo-500 ring-offset-1 scale-110" : "hover:scale-105"
+                          }`}
+                        />
+                      ))}
+                    </div>
+                  </div>
 
-              {/* Slug badge */}
-              <span className="text-xs text-gray-400 dark:text-gray-600 font-mono shrink-0">
-                /{item.slug}
-              </span>
+                  {/* Features */}
+                  <div>
+                    <label className="text-xs font-medium text-gray-500 dark:text-gray-400 block mb-1">
+                      Фичи (по одной на строке, макс. 4)
+                    </label>
+                    <textarea
+                      value={item.features.join("\n")}
+                      onChange={(e) => update(item.slug || `new-${i}`, {
+                        features: e.target.value.split("\n").map(s => s.trim()).filter(Boolean).slice(0, 4)
+                      })}
+                      rows={4}
+                      className="w-full text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 focus:border-indigo-500 focus:outline-none text-gray-700 dark:text-gray-300 resize-none"
+                      placeholder={"Онлайн-запись\nКлиентская база\nРасписание\nСтатистика"}
+                    />
+                  </div>
+                </div>
+              )}
 
-              {/* Coming soon toggle */}
-              <button
-                onClick={() => update(item.slug, { comingSoon: !item.comingSoon })}
-                className={`text-xs px-2 py-1 rounded-full border shrink-0 transition-colors ${
-                  item.comingSoon
-                    ? "border-amber-400 text-amber-600 bg-amber-50 dark:bg-amber-900/20 dark:text-amber-400"
-                    : "border-gray-200 dark:border-gray-700 text-gray-400 dark:text-gray-600 hover:border-gray-300"
-                }`}
-                title="Переключить «Скоро»"
-              >
-                {item.comingSoon ? "Скоро" : "Активен"}
-              </button>
-
-              {/* Hide/show */}
-              <button
-                onClick={() => update(item.slug, { hidden: !item.hidden })}
-                className="p-1.5 rounded text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 shrink-0"
-                title={item.hidden ? "Показать" : "Скрыть"}
-              >
-                {item.hidden ? <Eye size={16} /> : <EyeOff size={16} />}
-              </button>
+              {/* Icon picker */}
+              {iconPickerSlug === (item.slug || `new-${i}`) && (
+                <div className="px-4 pb-4 border-t border-indigo-100 dark:border-indigo-900 pt-3">
+                  <p className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 mb-2 uppercase tracking-wide">
+                    Выберите иконку
+                  </p>
+                  <div className="grid grid-cols-10 gap-2">
+                    {ICON_OPTIONS.map(({ name, icon: Ico }) => (
+                      <button
+                        key={name}
+                        onClick={() => {
+                          update(item.slug || `new-${i}`, { iconName: name });
+                          setIconPickerSlug(null);
+                        }}
+                        title={name}
+                        className={`w-9 h-9 flex items-center justify-center rounded-lg border transition-colors ${
+                          item.iconName === name
+                            ? "border-indigo-500 bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400"
+                            : "border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-indigo-300 hover:bg-white dark:hover:bg-gray-800"
+                        }`}
+                      >
+                        <Ico size={16} />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           );
         })}
       </div>
 
-      {/* Icon picker panel */}
-      {iconPickerSlug && (
-        <div className="mb-6 rounded-xl border border-indigo-200 dark:border-indigo-700 bg-indigo-50 dark:bg-indigo-950/30 p-4">
-          <p className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 mb-3 uppercase tracking-wide">
-            Выберите иконку для /{iconPickerSlug}
-          </p>
-          <div className="grid grid-cols-10 gap-2">
-            {ICON_OPTIONS.map(({ name, icon: Ico }) => {
-              const current = items.find((p) => p.slug === iconPickerSlug)?.iconName;
-              return (
-                <button
-                  key={name}
-                  onClick={() => {
-                    update(iconPickerSlug, { iconName: name });
-                    setIconPickerSlug(null);
-                  }}
-                  title={name}
-                  className={`w-9 h-9 flex items-center justify-center rounded-lg border transition-colors ${
-                    current === name
-                      ? "border-indigo-500 bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400"
-                      : "border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-indigo-300 hover:bg-white dark:hover:bg-gray-800"
-                  }`}
-                >
-                  <Ico size={16} />
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
       {/* Save button */}
-      <button
-        onClick={handleSave}
-        disabled={saving}
-        className={`flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-          saved
-            ? "bg-green-600 text-white"
-            : "bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50"
-        }`}
-      >
-        {saved && <Check size={15} />}
-        {saving ? "Сохранение..." : saved ? "Сохранено!" : "Сохранить конфигурацию"}
-      </button>
-
-      <p className="mt-4 text-xs text-gray-400 dark:text-gray-600">
-        Настройки хранятся в app_settings.products_config. Чтобы применить изменения на лендинге,
-        запустите деплой ezze-landing (git push).
-      </p>
+      <div className="flex items-center gap-4">
+        <button
+          onClick={handleSave}
+          disabled={saving}
+          className={`flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+            saved
+              ? "bg-green-600 text-white"
+              : "bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50"
+          }`}
+        >
+          {saved && <Check size={15} />}
+          {saving ? "Сохранение..." : saved ? "Сохранено!" : "Сохранить конфигурацию"}
+        </button>
+        <p className="text-xs text-gray-400 dark:text-gray-600">
+          Изменения применяются на ezze.site сразу после сохранения
+        </p>
+      </div>
     </div>
   );
 }
