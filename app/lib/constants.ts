@@ -1,5 +1,5 @@
 import {
-  Globe, Scissors, Shirt, Stethoscope, Leaf, GraduationCap,
+  Globe, Scissors, Wrench, WashingMachine, Stethoscope, Leaf, GraduationCap,
   CalendarDays, UtensilsCrossed, Building2, Car, Hammer, ShoppingBag,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -13,7 +13,7 @@ export interface ProductItem {
 export const PRODUCTS: ProductItem[] = [
   { slug: "main",      label: "Главная (ezze.site)",   icon: Globe },
   { slug: "beauty",    label: "Ezze Beauty",            icon: Scissors },
-  { slug: "workshop",  label: "Ezze Workshop",          icon: Shirt },
+  { slug: "workshop",  label: "Ezze Workshop",          icon: Wrench },
   { slug: "clinic",    label: "Ezze Clinic",            icon: Stethoscope },
   { slug: "farm",      label: "Ezze Farm",              icon: Leaf },
   { slug: "edu",       label: "Ezze Edu",               icon: GraduationCap },
@@ -23,6 +23,7 @@ export const PRODUCTS: ProductItem[] = [
   { slug: "transport", label: "Ezze Transport",         icon: Car },
   { slug: "build",     label: "Ezze Build",             icon: Hammer },
   { slug: "trade",     label: "Ezze Trade",             icon: ShoppingBag },
+  { slug: "cleaning",  label: "Ezze Cleaning",          icon: WashingMachine },
 ];
 
 export const SECTIONS = [
@@ -40,7 +41,7 @@ export type Lang = (typeof LANGS)[number];
 
 export const SECTION_SCHEMAS: Record<string, string> = {
   hero: JSON.stringify(
-    { title: "Ezze Beauty", subtitle: "Платформа для мастеров красоты", badge: "Топ продукт", cta_text: "Открыть приложение", cta_url: "https://pro.ezze.site" },
+    { title: "Ezze Beauty", subtitle: "Платформа для мастеров красоты", badge: "Топ продукт", cta_text: "Открыть приложение", cta_url: "https://beauty.ezze.site" },
     null, 2
   ),
   features: JSON.stringify(
@@ -60,7 +61,7 @@ export const SECTION_SCHEMAS: Record<string, string> = {
     null, 2
   ),
   cta: JSON.stringify(
-    { title: "Готовы начать?", subtitle: "Бесплатный тариф навсегда.", button_text: "Создать аккаунт", button_url: "https://pro.ezze.site/register" },
+    { title: "Готовы начать?", subtitle: "Бесплатный тариф навсегда.", button_text: "Создать аккаунт", button_url: "https://beauty.ezze.site/register" },
     null, 2
   ),
   meta: JSON.stringify(
