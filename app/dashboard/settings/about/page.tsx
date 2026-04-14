@@ -73,8 +73,8 @@ export default function AboutSettingsPage() {
 
   useEffect(() => {
     Promise.all([
-      supabase.from("app_settings").select("value").eq("key", "about_config").single(),
-      supabase.from("app_settings").select("value").eq("key", "contacts_config").single(),
+      supabase.from("app_settings").select("value").eq("product", "main").eq("key", "about_config").single(),
+      supabase.from("app_settings").select("value").eq("product", "main").eq("key", "contacts_config").single(),
     ]).then(([{ data: a }, { data: c }]) => {
       if (a?.value) {
         try { setAbout({ ...DEFAULT_ABOUT, ...JSON.parse(typeof a.value === "string" ? a.value : JSON.stringify(a.value)) }); } catch { /* keep default */ }
@@ -89,13 +89,17 @@ export default function AboutSettingsPage() {
   async function handleSave() {
     setSaving(true);
     setSaved(false);
-    await Promise.all([
-      supabase.from("app_settings").upsert({ key: "about_config", value: about }, { onConflict: "key" }),
-      supabase.from("app_settings").upsert({ key: "contacts_config", value: contacts }, { onConflict: "key" }),
+    const [r1, r2] = await Promise.all([
+      supabase.from("app_settings").upsert({ product: "main", key: "about_config", value: about }, { onConflict: "product,key" }),
+      supabase.from("app_settings").upsert({ product: "main", key: "contacts_config", value: contacts }, { onConflict: "product,key" }),
     ]);
     setSaving(false);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
+    if (r1.error || r2.error) {
+      console.error("Save error:", r1.error || r2.error);
+    } else {
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+    }
   }
 
   if (loading) return <div className="p-8 text-gray-400 text-sm">Загрузка...</div>;
