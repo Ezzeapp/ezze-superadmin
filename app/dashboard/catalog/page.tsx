@@ -14,7 +14,8 @@ type TabType = "services" | "products" | "order_types";
 type GlobalService = {
   id: string;
   name: string;
-  category: string | null;
+  order_type: string | null;   // cleaning: 'clothing' | 'carpet' | 'furniture' | etc.
+  category: string | null;     // subcategory text for cleaning, category for others
   duration_min: number | null;
   price: number | null;
   product: string;
@@ -150,6 +151,7 @@ export default function CatalogPage() {
   const [addOpen, setAddOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [formName, setFormName] = useState("");
+  const [formOrderType, setFormOrderType] = useState("");
   const [formCategory, setFormCategory] = useState("");
   const [formDuration, setFormDuration] = useState("60");
   const [formUnit, setFormUnit] = useState("шт");
@@ -395,6 +397,7 @@ export default function CatalogPage() {
     const table = tab === "services" ? "global_services" : "global_products";
     const update: Record<string, unknown> = {};
     if (field === "name") { if (!trimmed) return; update.name = trimmed; }
+    else if (field === "order_type") update.order_type = trimmed || null;
     else if (field === "category") update.category = trimmed || null;
     else if (field === "price") update.price = trimmed ? parseFloat(trimmed) : null;
     else if (field === "duration") update.duration_min = trimmed ? parseInt(trimmed) : null;
@@ -443,9 +446,49 @@ export default function CatalogPage() {
     );
   }
 
+  // ── Inline order type select cell ─────────────────────────────────────────────
+  const OT_COLORS: Record<string, string> = {
+    clothing: "bg-blue-100 text-blue-700",
+    carpet: "bg-green-100 text-green-700",
+    furniture: "bg-amber-100 text-amber-700",
+    shoes: "bg-rose-100 text-rose-700",
+    curtains: "bg-violet-100 text-violet-700",
+    bedding: "bg-sky-100 text-sky-700",
+  };
+  function renderOrderTypeCell(svc: GlobalService, isSaving: boolean) {
+    const isEditing = inlineEdit?.id === svc.id && inlineEdit?.field === "order_type";
+    if (isEditing) {
+      return (
+        <select
+          autoFocus
+          value={inlineEdit!.value}
+          onChange={(e) => setInlineEdit({ ...inlineEdit!, value: e.target.value })}
+          onBlur={saveInlineEdit}
+          className="h-7 text-xs appearance-none rounded border border-indigo-400 bg-white dark:bg-gray-800 px-2 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+        >
+          <option value="">—</option>
+          {DEFAULT_ORDER_TYPES.map((t) => (
+            <option key={t.slug} value={t.slug}>{t.label}</option>
+          ))}
+        </select>
+      );
+    }
+    const val = svc.order_type;
+    const label = DEFAULT_ORDER_TYPES.find((t) => t.slug === val)?.label;
+    return (
+      <button
+        onClick={() => !isSaving && startInlineEdit(svc.id, "order_type", val)}
+        className={`px-2 py-0.5 rounded-full text-xs font-medium ${val ? (OT_COLORS[val] ?? "bg-gray-100 text-gray-600") : "text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"} transition-colors`}
+        title="Нажмите для изменения"
+      >
+        {label ?? (val || "—")}
+      </button>
+    );
+  }
+
   // ── Add new item ──────────────────────────────────────────────────────────────
   function openAdd() {
-    setFormName(""); setFormCategory(""); setFormDuration("60");
+    setFormName(""); setFormOrderType("clothing"); setFormCategory(""); setFormDuration("60");
     setFormUnit("шт"); setFormPrice("");
     setFormProduct(selectedProduct === "all" ? "beauty" : selectedProduct);
     setAddOpen(true);
@@ -464,7 +507,9 @@ export default function CatalogPage() {
     try {
       if (tab === "services") {
         const payload = {
-          name: formName.trim(), category: formCategory.trim() || null,
+          name: formName.trim(),
+          order_type: formProduct === "cleaning" ? (formOrderType || "clothing") : null,
+          category: formCategory.trim() || null,
           duration_min: formDuration ? parseInt(formDuration) : null,
           price: formPrice ? parseFloat(formPrice) : null, product: formProduct,
         };
@@ -827,9 +872,14 @@ export default function CatalogPage() {
                       Название<SortIcon col="name" sortKey={sortKey} sortAsc={sortAsc} />
                     </button>
                   </th>
+                  {(selectedProduct === "cleaning" || selectedProduct === "all") && tab === "services" && (
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">
+                      Тип заказа
+                    </th>
+                  )}
                   <th className="px-4 py-3 text-left">
                     <button onClick={() => toggleSort("category")} className="flex items-center text-xs font-medium text-gray-500 uppercase tracking-wide hover:text-gray-900 dark:hover:text-white">
-                      Категория<SortIcon col="category" sortKey={sortKey} sortAsc={sortAsc} />
+                      {tab === "services" && (selectedProduct === "cleaning" || selectedProduct === "all") ? "Подкатегория" : "Категория"}<SortIcon col="category" sortKey={sortKey} sortAsc={sortAsc} />
                     </button>
                   </th>
                   {tab === "services" ? (
@@ -852,9 +902,9 @@ export default function CatalogPage() {
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-gray-700/50">
                 {loading ? (
-                  <tr><td colSpan={7} className="text-center py-12 text-gray-400 text-sm">Загрузка...</td></tr>
+                  <tr><td colSpan={8} className="text-center py-12 text-gray-400 text-sm">Загрузка...</td></tr>
                 ) : pageItems.length === 0 ? (
-                  <tr><td colSpan={7} className="text-center py-12 text-gray-400 text-sm">{search || categoryFilter !== "all" ? "Ничего не найдено" : "Записей нет"}</td></tr>
+                  <tr><td colSpan={8} className="text-center py-12 text-gray-400 text-sm">{search || categoryFilter !== "all" ? "Ничего не найдено" : "Записей нет"}</td></tr>
                 ) : pageItems.map((item) => {
                   const svc = tab === "services" ? (item as GlobalService) : null;
                   const prd = tab === "products" ? (item as GlobalProduct) : null;
@@ -873,6 +923,11 @@ export default function CatalogPage() {
                       <td className="px-4 py-3 font-medium text-gray-900 dark:text-white max-w-[220px]">
                         <InlineCell id={item.id} field="name" display={item.name} />
                       </td>
+                      {(selectedProduct === "cleaning" || selectedProduct === "all") && tab === "services" && (
+                        <td className="px-4 py-3">
+                          {svc ? renderOrderTypeCell(svc, isSaving) : null}
+                        </td>
+                      )}
                       <td className="px-4 py-3 text-gray-500 dark:text-gray-400 max-w-[160px]">
                         <InlineCell id={item.id} field="category" display={item.category} />
                       </td>
@@ -967,10 +1022,25 @@ export default function CatalogPage() {
                   onKeyDown={(e) => e.key === "Enter" && handleSave()}
                 />
               </div>
+              {tab === "services" && formProduct === "cleaning" && (
+                <div>
+                  <label className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1 block">Тип заказа</label>
+                  <select value={formOrderType} onChange={(e) => setFormOrderType(e.target.value)}
+                    className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  >
+                    {DEFAULT_ORDER_TYPES.map((t) => (
+                      <option key={t.slug} value={t.slug}>{t.label}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <div>
-                <label className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1 block">Категория</label>
+                <label className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1 block">
+                  {tab === "services" && formProduct === "cleaning" ? "Подкатегория" : "Категория"}
+                </label>
                 <input type="text" value={formCategory} onChange={(e) => setFormCategory(e.target.value)}
-                  placeholder="Волосы, Уход..." list="category-suggestions"
+                  placeholder={tab === "services" && formProduct === "cleaning" ? "Верхняя одежда, Детская одежда..." : "Волосы, Уход..."}
+                  list="category-suggestions"
                   className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
                 <datalist id="category-suggestions">
