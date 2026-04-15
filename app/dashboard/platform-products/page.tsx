@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import {
-  LayoutGrid, Eye, EyeOff, ChevronUp, ChevronDown, Pencil, Check, X,
+  LayoutGrid, Eye, EyeOff, ChevronUp, ChevronDown, Pencil, Check, X, Plus,
   Scissors, Stethoscope, Wrench, GraduationCap, BedDouble, UtensilsCrossed,
   PartyPopper, Wheat, Car, HardHat, ShoppingCart, WashingMachine,
   type LucideIcon,
@@ -75,6 +75,14 @@ export default function PlatformProductsPage() {
   const [editName, setEditName] = useState("");
   const [editDesc, setEditDesc] = useState("");
   const [saving, setSaving] = useState(false);
+
+  // Add product modal
+  const [addOpen, setAddOpen] = useState(false);
+  const [newKey, setNewKey] = useState("");
+  const [newNameRu, setNewNameRu] = useState("");
+  const [newDescRu, setNewDescRu] = useState("");
+  const [addError, setAddError] = useState("");
+  const [addSaving, setAddSaving] = useState(false);
 
   async function load() {
     const { data } = await supabase
@@ -151,6 +159,39 @@ export default function PlatformProductsPage() {
     setEditKey(null);
   }
 
+  // ── Add new product ──────────────────────────────────────────────────────────
+
+  async function handleAdd() {
+    const key = newKey.trim().toLowerCase().replace(/[^a-z0-9_]/g, "");
+    const name = newNameRu.trim();
+    if (!key) { setAddError("Укажите ключ (slug)"); return; }
+    if (!name) { setAddError("Укажите название на русском"); return; }
+    if (products.some(p => p.key === key)) { setAddError("Такой ключ уже существует"); return; }
+
+    setAddSaving(true);
+    setAddError("");
+    const maxOrder = products.reduce((m, p) => Math.max(m, p.sort_order), -1);
+    const { data, error } = await supabase
+      .from("platform_products")
+      .insert({
+        key,
+        name_ru: name,
+        desc_ru: newDescRu.trim() || null,
+        active: true,
+        sort_order: maxOrder + 1,
+      })
+      .select()
+      .single();
+
+    setAddSaving(false);
+    if (error) { setAddError("Ошибка: " + error.message); return; }
+    setProducts(prev => [...prev, data as PlatformProduct]);
+    setAddOpen(false);
+    setNewKey("");
+    setNewNameRu("");
+    setNewDescRu("");
+  }
+
   // ── Render ───────────────────────────────────────────────────────────────────
 
   return (
@@ -160,7 +201,7 @@ export default function PlatformProductsPage() {
         <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-100 dark:bg-indigo-900">
           <LayoutGrid size={18} className="text-indigo-600 dark:text-indigo-400" />
         </div>
-        <div>
+        <div className="flex-1">
           <h1 className="text-lg font-semibold text-gray-900 dark:text-white">
             Направления бизнеса
           </h1>
@@ -168,6 +209,13 @@ export default function PlatformProductsPage() {
             Список продуктов на экране выбора при регистрации
           </p>
         </div>
+        <button
+          onClick={() => { setAddOpen(true); setAddError(""); }}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 transition-colors"
+        >
+          <Plus size={14} />
+          Добавить
+        </button>
       </div>
 
       {/* Lang tabs */}
@@ -338,6 +386,91 @@ export default function PlatformProductsPage() {
       <p className="text-xs text-gray-400 mt-3">
         Изменения применяются сразу — перезагрузка страницы регистрации не требуется.
       </p>
+
+      {/* Add product modal */}
+      {addOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-semibold text-gray-900 dark:text-white">
+                Новое направление
+              </h2>
+              <button onClick={() => setAddOpen(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs font-medium text-gray-600 dark:text-gray-400 block mb-1">
+                  Ключ (slug) *
+                </label>
+                <input
+                  value={newKey}
+                  onChange={e => {
+                    setNewKey(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ""));
+                    setAddError("");
+                  }}
+                  placeholder="fitness, laundry, auto..."
+                  className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono"
+                />
+                <p className="text-[11px] text-gray-400 mt-1">
+                  Латиница, цифры, подчёркивание. Совпадает с VITE_PRODUCT в деплое.
+                </p>
+              </div>
+
+              <div>
+                <label className="text-xs font-medium text-gray-600 dark:text-gray-400 block mb-1">
+                  Название (RU) *
+                </label>
+                <input
+                  value={newNameRu}
+                  onChange={e => { setNewNameRu(e.target.value); setAddError(""); }}
+                  placeholder="Фитнес"
+                  className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-medium text-gray-600 dark:text-gray-400 block mb-1">
+                  Описание (RU)
+                </label>
+                <input
+                  value={newDescRu}
+                  onChange={e => setNewDescRu(e.target.value)}
+                  placeholder="Тренеры, залы, йога"
+                  className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+
+              {addError && (
+                <p className="text-sm text-red-500">{addError}</p>
+              )}
+
+              <p className="text-[11px] text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 rounded-lg px-3 py-2">
+                Переводы на другие языки добавляются после создания через языковые вкладки.
+                Для появления приложения нужен отдельный деплой.
+              </p>
+            </div>
+
+            <div className="flex gap-2 pt-1">
+              <button
+                onClick={() => setAddOpen(false)}
+                className="flex-1 py-2 rounded-lg border border-gray-200 dark:border-gray-700 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+              >
+                Отмена
+              </button>
+              <button
+                onClick={handleAdd}
+                disabled={addSaving}
+                className="flex-1 py-2 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+              >
+                {addSaving ? "Сохранение..." : "Создать"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
