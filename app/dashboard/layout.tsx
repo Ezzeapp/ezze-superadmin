@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
-import { Zap, CreditCard, Bot, Mail, Palette, LayoutGrid, Info, Users, KeyRound, BookOpen, Grid3x3 } from "lucide-react";
+import { Zap, CreditCard, Bot, Mail, Palette, LayoutGrid, Info, Users, KeyRound, BookOpen } from "lucide-react";
 import { supabase, PRODUCTS } from "../lib/supabase";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -127,13 +127,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           >
             <BookOpen size={14} />
             <span className="truncate">Справочник</span>
-          </Link>
-          <Link
-            href="/dashboard/platform-products"
-            className={`${linkBase} ${pathname.startsWith("/dashboard/platform-products") ? linkActive : linkInactive}`}
-          >
-            <Grid3x3 size={14} />
-            <span className="truncate">Направления</span>
           </Link>
         </div>
 

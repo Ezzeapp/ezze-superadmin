@@ -6,7 +6,7 @@ import {
   Heart, Dumbbell, Package, Truck, Hotel, Camera, Music, Dog, Flower2,
   Wrench, Cpu, BookOpen, Coffee, Bike, Baby, Store, ClipboardList,
   WashingMachine, ChevronUp, ChevronDown, EyeOff, Eye, Check, LayoutGrid,
-  Plus, Trash2,
+  Plus, Trash2, Download,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { supabase } from "../../../lib/supabase";
@@ -61,6 +61,18 @@ const COLOR_OPTIONS = [
   { label: "Циановый",          value: "from-cyan-500 to-blue-600" },
 ];
 
+const LANGS = [
+  { code: "ru",  label: "Русский" },
+  { code: "en",  label: "English" },
+  { code: "uz",  label: "O'zbekcha" },
+  { code: "kz",  label: "Қазақша" },
+  { code: "ky",  label: "Кыргызча" },
+  { code: "tg",  label: "Тоҷикӣ" },
+  { code: "uk",  label: "Українська" },
+  { code: "by",  label: "Беларуская" },
+  { code: "kaa", label: "Қарақалпақша" },
+];
+
 function getIconComponent(name: string): LucideIcon {
   return ICON_OPTIONS.find((o) => o.name === name)?.icon ?? Globe;
 }
@@ -75,6 +87,9 @@ interface ProductConfig {
   description: string;
   color: string;
   features: string[];
+  showInRegistration: boolean;
+  nameI18n: Record<string, string>;
+  descI18n: Record<string, string>;
 }
 
 function newProduct(): ProductConfig {
@@ -88,6 +103,9 @@ function newProduct(): ProductConfig {
     description: "",
     color: "from-indigo-500 to-purple-600",
     features: [],
+    showInRegistration: true,
+    nameI18n: {},
+    descI18n: {},
   };
 }
 
@@ -97,9 +115,11 @@ export default function ProductsSettingsPage() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [saveError, setSaveError] = useState("");
-  // Use index-based state to correctly handle new products with empty slugs
   const [iconPickerIdx, setIconPickerIdx] = useState<number | null>(null);
   const [expandedIdx, setExpandedIdx] = useState<number | null>(null);
+  const [activeLang, setActiveLang] = useState("ru");
+  const [migrating, setMigrating] = useState(false);
+  const [migrated, setMigrated] = useState(false);
 
   useEffect(() => {
     supabase
@@ -118,6 +138,9 @@ export default function ProductsSettingsPage() {
                 description: p.description ?? "",
                 color: p.color ?? "from-indigo-500 to-purple-600",
                 features: p.features ?? [],
+                showInRegistration: p.showInRegistration ?? !p.comingSoon,
+                nameI18n: p.nameI18n ?? {},
+                descI18n: p.descI18n ?? {},
               })));
             }
           } catch { /* keep empty */ }
@@ -126,12 +149,53 @@ export default function ProductsSettingsPage() {
       });
   }, []);
 
+  async function importFromPlatformProducts() {
+    setMigrating(true);
+    const { data: rows } = await supabase.from("platform_products").select("*");
+    if (rows && rows.length > 0) {
+      setItems(prev => prev.map(item => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const row = rows.find((r: any) => r.key === item.slug);
+        if (!row) return item;
+        return {
+          ...item,
+          showInRegistration: row.active ?? true,
+          nameI18n: {
+            ru:  row.name_ru  || "",
+            en:  row.name_en  || "",
+            uz:  row.name_uz  || "",
+            kz:  row.name_kz  || "",
+            ky:  row.name_ky  || "",
+            tg:  row.name_tg  || "",
+            uk:  row.name_uk  || "",
+            by:  row.name_by  || "",
+            kaa: row.name_kaa || "",
+          },
+          descI18n: {
+            ru:  row.desc_ru  || "",
+            en:  row.desc_en  || "",
+            uz:  row.desc_uz  || "",
+            kz:  row.desc_kz  || "",
+            ky:  row.desc_ky  || "",
+            tg:  row.desc_tg  || "",
+            uk:  row.desc_uk  || "",
+            by:  row.desc_by  || "",
+            kaa: row.desc_kaa || "",
+          },
+        };
+      }));
+      setSaved(false);
+      setMigrated(true);
+      setTimeout(() => setMigrated(false), 3000);
+    }
+    setMigrating(false);
+  }
+
   function move(index: number, dir: -1 | 1) {
     const next = [...items];
     const target = index + dir;
     if (target < 0 || target >= next.length) return;
     [next[index], next[target]] = [next[target], next[index]];
-    // Keep expanded/iconPicker pointing to the moved item
     if (expandedIdx === index) setExpandedIdx(target);
     else if (expandedIdx === target) setExpandedIdx(index);
     if (iconPickerIdx === index) setIconPickerIdx(target);
@@ -184,13 +248,14 @@ export default function ProductsSettingsPage() {
 
   return (
     <div className="p-8 max-w-3xl">
-      <div className="flex items-center justify-between mb-6">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
           <LayoutGrid size={22} className="text-indigo-600 dark:text-indigo-400" />
           <div>
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Управление продуктами</h1>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-              Изменения применяются на ezze.site автоматически (без деплоя)
+              Лендинг + экран выбора при регистрации
             </p>
           </div>
         </div>
@@ -203,11 +268,54 @@ export default function ProductsSettingsPage() {
         </button>
       </div>
 
+      {/* Language tabs + import button */}
+      <div className="mb-5 p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 space-y-2">
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-xs font-medium text-gray-500 dark:text-gray-400">
+            Язык экрана регистрации:
+          </p>
+          <button
+            onClick={importFromPlatformProducts}
+            disabled={migrating}
+            className={[
+              "flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition-colors",
+              migrated
+                ? "border-green-400 text-green-600 bg-green-50 dark:bg-green-900/20"
+                : "border-gray-200 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:border-indigo-400 hover:text-indigo-600 dark:hover:text-indigo-400",
+            ].join(" ")}
+            title="Импортировать переводы из таблицы platform_products"
+          >
+            {migrated ? <Check size={12} /> : <Download size={12} />}
+            {migrating ? "Импорт..." : migrated ? "Импортировано!" : "Импорт переводов"}
+          </button>
+        </div>
+        <div className="flex gap-1 flex-wrap">
+          {LANGS.map((l) => (
+            <button
+              key={l.code}
+              onClick={() => setActiveLang(l.code)}
+              className={[
+                "px-3 py-1 rounded-full text-xs font-medium transition-colors",
+                activeLang === l.code
+                  ? "bg-indigo-600 text-white"
+                  : "bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700",
+              ].join(" ")}
+            >
+              {l.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Product list */}
       <div className="space-y-2 mb-6">
         {items.map((item, i) => {
           const Icon = getIconComponent(item.iconName);
           const isExpanded = expandedIdx === i;
           const isIconOpen = iconPickerIdx === i;
+          const regName = item.nameI18n[activeLang] || item.nameI18n["ru"] || "";
+          const hasI18n = Object.values(item.nameI18n).some(v => v.trim());
+
           return (
             <div
               key={i}
@@ -256,7 +364,7 @@ export default function ProductsSettingsPage() {
                   />
                 </div>
 
-                {/* Slug — editable for new products, readonly badge for existing */}
+                {/* Slug */}
                 {item.slug ? (
                   <span className="text-xs text-gray-400 dark:text-gray-600 font-mono shrink-0">/{item.slug}</span>
                 ) : (
@@ -266,6 +374,16 @@ export default function ProductsSettingsPage() {
                     className="w-20 text-xs font-mono bg-transparent border border-gray-300 dark:border-gray-600 rounded px-2 py-1 focus:border-indigo-500 focus:outline-none text-gray-600 dark:text-gray-400"
                     placeholder="slug"
                   />
+                )}
+
+                {/* Registration badge — show reg name if i18n filled */}
+                {hasI18n && (
+                  <span
+                    className="text-[10px] text-gray-400 dark:text-gray-600 font-medium shrink-0 max-w-[60px] truncate"
+                    title={`Регистрация: ${regName}`}
+                  >
+                    {regName}
+                  </span>
                 )}
 
                 {/* Coming soon */}
@@ -293,7 +411,7 @@ export default function ProductsSettingsPage() {
                 <button
                   onClick={() => setExpandedIdx(isExpanded ? null : i)}
                   className="p-1.5 rounded text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 shrink-0"
-                  title="Описание и фичи"
+                  title="Настройки"
                 >
                   <ChevronDown size={16} className={`transition-transform ${isExpanded ? "rotate-180" : ""}`} />
                 </button>
@@ -308,46 +426,99 @@ export default function ProductsSettingsPage() {
                 </button>
               </div>
 
-              {/* Expanded: description, color, features */}
+              {/* Expanded panel */}
               {isExpanded && (
-                <div className="px-4 pb-4 border-t border-gray-100 dark:border-gray-800 pt-3 space-y-3">
-                  <div>
-                    <label className="text-xs font-medium text-gray-500 dark:text-gray-400 block mb-1">Описание</label>
-                    <input
-                      value={item.description}
-                      onChange={(e) => update(i, { description: e.target.value })}
-                      className="w-full text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 focus:border-indigo-500 focus:outline-none text-gray-700 dark:text-gray-300"
-                      placeholder="Краткое описание продукта для лендинга"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium text-gray-500 dark:text-gray-400 block mb-1">Цвет иконки</label>
-                    <div className="flex flex-wrap gap-2">
-                      {COLOR_OPTIONS.map((c) => (
-                        <button
-                          key={c.value}
-                          onClick={() => update(i, { color: c.value })}
-                          title={c.label}
-                          className={`w-7 h-7 rounded-lg bg-gradient-to-br ${c.value} transition-all ${
-                            item.color === c.value ? "ring-2 ring-indigo-500 ring-offset-1 scale-110" : "hover:scale-105"
-                          }`}
-                        />
-                      ))}
+                <div className="border-t border-gray-100 dark:border-gray-800">
+
+                  {/* Registration section */}
+                  <div className="px-4 pt-3 pb-3 space-y-2">
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 uppercase tracking-wide">
+                        Экран регистрации
+                      </label>
+                      <button
+                        onClick={() => update(i, { showInRegistration: !item.showInRegistration })}
+                        className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${
+                          item.showInRegistration
+                            ? "border-green-400 text-green-600 bg-green-50 dark:bg-green-900/20 dark:text-green-400"
+                            : "border-gray-200 dark:border-gray-700 text-gray-400 dark:text-gray-600"
+                        }`}
+                      >
+                        {item.showInRegistration ? "Показывать" : "Скрыто"}
+                      </button>
                     </div>
+                    {item.showInRegistration && (
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="text-[10px] text-gray-400 dark:text-gray-500 block mb-1">
+                            Название ({activeLang.toUpperCase()})
+                            {activeLang !== "ru" && !item.nameI18n[activeLang] && item.nameI18n["ru"] && (
+                              <span className="ml-1 text-amber-500">нет перевода</span>
+                            )}
+                          </label>
+                          <input
+                            value={item.nameI18n[activeLang] || ""}
+                            onChange={(e) => update(i, { nameI18n: { ...item.nameI18n, [activeLang]: e.target.value } })}
+                            className="w-full text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 focus:border-indigo-500 focus:outline-none text-gray-700 dark:text-gray-300"
+                            placeholder={`Красота 111`}
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[10px] text-gray-400 dark:text-gray-500 block mb-1">
+                            Описание ({activeLang.toUpperCase()})
+                          </label>
+                          <input
+                            value={item.descI18n[activeLang] || ""}
+                            onChange={(e) => update(i, { descI18n: { ...item.descI18n, [activeLang]: e.target.value } })}
+                            className="w-full text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 focus:border-indigo-500 focus:outline-none text-gray-700 dark:text-gray-300"
+                            placeholder="Салоны, парикмахеры..."
+                          />
+                        </div>
+                      </div>
+                    )}
                   </div>
-                  <div>
-                    <label className="text-xs font-medium text-gray-500 dark:text-gray-400 block mb-1">
-                      Фичи (по одной на строке, макс. 4)
-                    </label>
-                    <textarea
-                      value={item.features.join("\n")}
-                      onChange={(e) => update(i, {
-                        features: e.target.value.split("\n").map(s => s.trim()).filter(Boolean).slice(0, 4)
-                      })}
-                      rows={4}
-                      className="w-full text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 focus:border-indigo-500 focus:outline-none text-gray-700 dark:text-gray-300 resize-none"
-                      placeholder={"Онлайн-запись\nКлиентская база\nРасписание\nСтатистика"}
-                    />
+
+                  {/* Landing section */}
+                  <div className="px-4 pb-4 border-t border-gray-100 dark:border-gray-800 pt-3 space-y-3">
+                    <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Лендинг</p>
+                    <div>
+                      <label className="text-xs font-medium text-gray-500 dark:text-gray-400 block mb-1">Описание</label>
+                      <input
+                        value={item.description}
+                        onChange={(e) => update(i, { description: e.target.value })}
+                        className="w-full text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 focus:border-indigo-500 focus:outline-none text-gray-700 dark:text-gray-300"
+                        placeholder="Краткое описание продукта для лендинга"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-gray-500 dark:text-gray-400 block mb-1">Цвет иконки</label>
+                      <div className="flex flex-wrap gap-2">
+                        {COLOR_OPTIONS.map((c) => (
+                          <button
+                            key={c.value}
+                            onClick={() => update(i, { color: c.value })}
+                            title={c.label}
+                            className={`w-7 h-7 rounded-lg bg-gradient-to-br ${c.value} transition-all ${
+                              item.color === c.value ? "ring-2 ring-indigo-500 ring-offset-1 scale-110" : "hover:scale-105"
+                            }`}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-gray-500 dark:text-gray-400 block mb-1">
+                        Фичи (по одной на строке, макс. 4)
+                      </label>
+                      <textarea
+                        value={item.features.join("\n")}
+                        onChange={(e) => update(i, {
+                          features: e.target.value.split("\n").map(s => s.trim()).filter(Boolean).slice(0, 4)
+                        })}
+                        rows={4}
+                        className="w-full text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 focus:border-indigo-500 focus:outline-none text-gray-700 dark:text-gray-300 resize-none"
+                        placeholder={"Онлайн-запись\nКлиентская база\nРасписание\nСтатистика"}
+                      />
+                    </div>
                   </div>
                 </div>
               )}
@@ -397,7 +568,7 @@ export default function ProductsSettingsPage() {
             {saving ? "Сохранение..." : saved ? "Сохранено!" : "Сохранить конфигурацию"}
           </button>
           <p className="text-xs text-gray-400 dark:text-gray-600">
-            Изменения применяются на ezze.site сразу после сохранения
+            Применяется на ezze.site и экране регистрации
           </p>
         </div>
         {saveError && (
