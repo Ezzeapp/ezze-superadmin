@@ -198,12 +198,18 @@ export default function CatalogPage() {
   useEffect(() => {
     if (tab === "services") loadServices();
     else if (tab === "products") loadProductsData();
-    else if (tab === "order_types") loadOrderTypes();
+    // order_types loaded separately (not on selectedProduct change)
     setPage(1);
     setSelectedIds(new Set());
     setCategoryFilter("all");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab, selectedProduct]);
+
+  // Load order types only when tab switches — product-independent
+  useEffect(() => {
+    if (tab === "order_types") loadOrderTypes();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab]);
 
   async function loadServices() {
     setLoadingServices(true);
@@ -240,6 +246,8 @@ export default function CatalogPage() {
         .eq("product", "cleaning")
         .eq("key", "cleaning_order_types_config")
         .maybeSingle();
+      // Mark: next setOrderTypes call is from DB load — don't auto-save it back
+      skipNextOTSave.current = true;
       if (data?.value) {
         try { setOrderTypes(JSON.parse(data.value) || DEFAULT_ORDER_TYPES); }
         catch { setOrderTypes(DEFAULT_ORDER_TYPES); }
@@ -253,9 +261,11 @@ export default function CatalogPage() {
 
   // ── Auto-save order types ─────────────────────────────────────────────────────
   const isFirstOTRender = useRef(true);
+  const skipNextOTSave = useRef(false);
   useEffect(() => {
     if (isFirstOTRender.current) { isFirstOTRender.current = false; return; }
     if (orderTypes.length === 0) return;
+    if (skipNextOTSave.current) { skipNextOTSave.current = false; return; }
     const timer = setTimeout(async () => {
       setSavingOrderTypes(true);
       try {
