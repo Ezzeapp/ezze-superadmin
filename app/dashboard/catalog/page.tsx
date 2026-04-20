@@ -269,9 +269,12 @@ export default function CatalogPage() {
     const timer = setTimeout(async () => {
       setSavingOrderTypes(true);
       try {
-        const { error } = await supabase.rpc("save_order_types_config", {
-          p_config: JSON.stringify(orderTypes),
-        });
+        const { error } = await supabase
+          .from("app_settings")
+          .upsert(
+            { product: "cleaning", key: "cleaning_order_types_config", value: JSON.stringify(orderTypes) },
+            { onConflict: "product,key" }
+          );
         if (error) console.error("Failed to save order types:", error);
       } finally {
         setSavingOrderTypes(false);
