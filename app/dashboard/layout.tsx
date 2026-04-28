@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
-import { Zap, CreditCard, Bot, Mail, Palette, LayoutGrid, Info, Users, KeyRound, BookOpen, ContactRound } from "lucide-react";
+import { Zap, CreditCard, Bot, Mail, Palette, LayoutGrid, Info, Users, KeyRound, BookOpen, ContactRound, Sparkles } from "lucide-react";
 import { supabase, PRODUCTS } from "../lib/supabase";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -145,6 +145,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           {[
             { href: "/dashboard/settings/products", icon: LayoutGrid, label: "Продукты" },
             { href: "/dashboard/settings/about",    icon: Info,       label: "О нас / Контакты" },
+            { href: "/dashboard/tariffs",           icon: Sparkles,   label: "Конструктор тарифов" },
             { href: "/dashboard/settings/billing",  icon: CreditCard, label: "Тарифы и платежи" },
             { href: "/dashboard/settings/ai",       icon: Bot,        label: "AI настройки" },
             { href: "/dashboard/settings/email",    icon: Mail,       label: "Email / SMTP" },
