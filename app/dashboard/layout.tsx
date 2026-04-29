@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
-import { Zap, CreditCard, Bot, Mail, Palette, LayoutGrid, Info, Users, KeyRound, BookOpen, ContactRound, Sparkles } from "lucide-react";
+import { Zap, CreditCard, Bot, Mail, Palette, LayoutGrid, Info, Users, KeyRound, BookOpen, ContactRound, Sparkles, UsersRound } from "lucide-react";
 import { supabase, PRODUCTS } from "../lib/supabase";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -127,6 +127,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           >
             <ContactRound size={14} />
             <span className="truncate">Клиенты</span>
+          </Link>
+          <Link
+            href="/dashboard/teams"
+            className={`${linkBase} ${pathname.startsWith("/dashboard/teams") ? linkActive : linkInactive}`}
+          >
+            <UsersRound size={14} />
+            <span className="truncate">Команды</span>
           </Link>
           <Link
             href="/dashboard/catalog"
