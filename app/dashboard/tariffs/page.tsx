@@ -1,25 +1,25 @@
 "use client";
 /**
- * Конструктор тарифов — per-product настройка планов с per-seat биллингом.
+ * Тарифы и платежи — единый раздел управления тарифами для всех продуктов.
  *
- * Что редактируется:
- *  - Названия тарифов (Free / Pro / Business)
- *  - Базовая цена/мес
- *  - Активность (показывать ли тариф в Billing)
- *  - Лимиты (заказов/мес, клиентов, услуг)
- *  - Per-seat: включено мест, цена за доп. место, максимум мест
- *  - Список фич (для отображения в карточке тарифа)
+ * Три вкладки:
+ *  1. Тарифы           — plan_names, plan_active, plan_prices, plan_seat_pricing,
+ *                        plan_limits, plan_features (per-product)
+ *  2. Платёжные провайдеры — payment_providers + payme_/click_ ключи (per-product)
+ *  3. Подписки         — список subscriptions с фильтром по продукту
  *
  * Хранение: app_settings с UNIQUE(product, key). Каждое сохранение upsert по (product, key).
  */
-
 import { useState, useEffect, useMemo } from "react";
-import { CreditCard, Settings2, Users, Sparkles, Plus, X, RefreshCw, Check } from "lucide-react";
+import {
+  CreditCard, Settings2, Users, Sparkles, Plus, X, RefreshCw, Check, ListChecks, Zap, Receipt,
+} from "lucide-react";
 import { supabase, PRODUCTS } from "../../lib/supabase";
 
 // ── Типы ──────────────────────────────────────────────────────────────────────
 
 type PlanKey = "free" | "pro" | "enterprise";
+type Tab = "plans" | "providers" | "subscriptions";
 
 type PlanNames    = { free: string; pro: string; enterprise: string };
 type PlanPrices   = { pro: number; enterprise: number };  // free всегда 0
@@ -77,22 +77,36 @@ const LIMIT_LABELS: Record<string, string> = {
   services:    "Услуг",
 };
 
+const PRODUCT_OPTIONS = PRODUCTS.filter(p => p.slug !== "main");
+const LS_PRODUCT_KEY = "sa_tariffs_product";
+const LS_TAB_KEY = "sa_tariffs_tab";
+
 // ── Helper: безопасный JSON.parse с fallback ─────────────────────────────────
 
-function parseJSON<T>(raw: string | null | undefined, fallback: T): T {
-  if (!raw) return fallback;
-  try { return JSON.parse(raw) as T; }
+function parseJSON<T>(raw: any, fallback: T): T {
+  if (raw == null) return fallback;
+  if (typeof raw === "object") return raw as T;
+  try { return JSON.parse(String(raw)) as T; }
   catch { return fallback; }
 }
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function TariffsPage() {
-  const [product, setProduct] = useState<string>("cleaning");
+  const [product, setProduct] = useState<string>(() => {
+    if (typeof window === "undefined") return PRODUCT_OPTIONS[0]?.slug ?? "beauty";
+    return localStorage.getItem(LS_PRODUCT_KEY) || PRODUCT_OPTIONS[0]?.slug || "beauty";
+  });
+  const [tab, setTab] = useState<Tab>(() => {
+    if (typeof window === "undefined") return "plans";
+    return (localStorage.getItem(LS_TAB_KEY) as Tab) || "plans";
+  });
+
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
   const [saved, setSaved] = useState<string | null>(null);
 
+  // Plans tab state
   const [names, setNames]       = useState<PlanNames>(DEFAULTS.names);
   const [prices, setPrices]     = useState<PlanPrices>(DEFAULTS.prices);
   const [limits, setLimits]     = useState<PlanLimit[]>(DEFAULTS.limits);
@@ -101,10 +115,41 @@ export default function TariffsPage() {
   const [seatPricing, setSeat]  = useState<PlanSeatPricing>(DEFAULTS.seat);
   const [newFeat, setNewFeat]   = useState<Record<PlanKey, string>>({ free: "", pro: "", enterprise: "" });
 
-  // Загрузка для выбранного продукта
+  // Providers tab state
+  const [providers, setProviders] = useState<string[]>([]);
+  const [paymeMerchant, setPaymeMerchant] = useState("");
+  const [paymeKey, setPaymeKey] = useState("");
+  const [clickService, setClickService] = useState("");
+  const [clickMerchant, setClickMerchant] = useState("");
+  const [clickKey, setClickKey] = useState("");
+  const [clickUserId, setClickUserId] = useState("");
+  const [existingKeys, setExistingKeys] = useState<Record<string, boolean>>({});
+
+  // Subscriptions tab state
+  const [subs, setSubs] = useState<any[]>([]);
+
+  const productLabel = useMemo(
+    () => PRODUCT_OPTIONS.find(p => p.slug === product)?.label ?? product,
+    [product]
+  );
+
+  // Persist выбор продукта/вкладки
   useEffect(() => {
+    if (typeof window !== "undefined") localStorage.setItem(LS_PRODUCT_KEY, product);
+  }, [product]);
+  useEffect(() => {
+    if (typeof window !== "undefined") localStorage.setItem(LS_TAB_KEY, tab);
+  }, [tab]);
+
+  // Загрузка данных при смене продукта
+  useEffect(() => {
+    loadAll();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [product]);
+
+  async function loadAll() {
     setLoading(true);
-    (async () => {
+    try {
       const { data } = await supabase
         .from("app_settings")
         .select("key, value")
@@ -112,9 +157,12 @@ export default function TariffsPage() {
         .in("key", [
           "plan_names", "plan_prices", "plan_limits",
           "plan_features", "plan_active", "plan_seat_pricing",
+          "payment_providers",
+          "payme_merchant_id", "payme_key",
+          "click_service_id", "click_merchant_id", "click_user_id", "click_merchant_key",
         ]);
 
-      const map: Record<string, string> = {};
+      const map: Record<string, any> = {};
       (data ?? []).forEach((r: any) => { map[r.key] = r.value; });
 
       setNames   (parseJSON(map.plan_names,         DEFAULTS.names));
@@ -123,9 +171,28 @@ export default function TariffsPage() {
       setFeatures(parseJSON(map.plan_features,      DEFAULTS.features));
       setActive  (parseJSON(map.plan_active,        DEFAULTS.active));
       setSeat    (parseJSON(map.plan_seat_pricing,  DEFAULTS.seat));
+      setProviders(parseJSON(map.payment_providers, [] as string[]));
+
+      // Reset secret inputs (показываем placeholder "уже задан")
+      setPaymeMerchant(""); setPaymeKey("");
+      setClickService(""); setClickMerchant(""); setClickUserId(""); setClickKey("");
+      const existing: Record<string, boolean> = {};
+      ["payme_merchant_id", "payme_key", "click_service_id", "click_merchant_id", "click_user_id", "click_merchant_key"]
+        .forEach(k => { if (map[k]) existing[k] = true; });
+      setExistingKeys(existing);
+
+      // Subscriptions — последние 20 для продукта
+      const { data: subsData } = await supabase
+        .from("subscriptions")
+        .select("id, plan, provider, amount_uzs, status, expires_at, user_id, users!inner(product)")
+        .eq("users.product", product)
+        .order("created_at", { ascending: false })
+        .limit(20);
+      setSubs(subsData ?? []);
+    } finally {
       setLoading(false);
-    })();
-  }, [product]);
+    }
+  }
 
   async function upsert(key: string, value: any) {
     const { error } = await supabase
@@ -152,7 +219,7 @@ export default function TariffsPage() {
   }
 
   async function resetToDefaults() {
-    if (!confirm(`Сбросить все тарифы для «${product}» к дефолтам?\n\nТекущие значения будут утеряны.`)) return;
+    if (!confirm(`Сбросить все тарифы для «${productLabel}» к дефолтам?\n\nТекущие значения будут утеряны.`)) return;
 
     await Promise.all([
       upsert("plan_names",         DEFAULTS.names),
@@ -169,7 +236,15 @@ export default function TariffsPage() {
     setFeatures(DEFAULTS.features);
     setActive(DEFAULTS.active);
     setSeat(DEFAULTS.seat);
-    alert("✅ Сброшено к дефолтам");
+    alert("Сброшено к дефолтам");
+  }
+
+  async function toggleProvider(provider: string, enabled: boolean) {
+    const next = enabled
+      ? [...providers.filter(p => p !== provider), provider]
+      : providers.filter(p => p !== provider);
+    setProviders(next);
+    await upsert("payment_providers", next);
   }
 
   // Превью расчёта стоимости подписки для разных размеров команды
@@ -204,364 +279,553 @@ export default function TariffsPage() {
   const card = "rounded-xl border border-gray-200 bg-white shadow-sm p-6 space-y-5";
   const btnSave = (sec: string) =>
     `inline-flex h-9 items-center gap-1.5 rounded-lg px-4 text-sm font-medium transition-colors disabled:opacity-50 ${saved === sec ? "bg-emerald-600 text-white" : "bg-indigo-600 text-white hover:bg-indigo-700"}`;
+  const btnOutline = "inline-flex h-9 items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors disabled:opacity-50";
 
   // ── Render ──────────────────────────────────────────────────────────────────
 
-  if (loading) {
-    return (
-      <div className="p-8 space-y-4">
-        {[1, 2, 3, 4].map(i => (
-          <div key={i} className="rounded-xl border border-gray-200 bg-white p-6 animate-pulse space-y-3">
-            <div className="h-5 bg-gray-100 rounded w-40" />
-            <div className="h-9 bg-gray-100 rounded" />
-            <div className="h-9 bg-gray-100 rounded w-1/2" />
-          </div>
-        ))}
-      </div>
-    );
-  }
+  const tabBtn = (id: Tab, label: string, Icon: any) => (
+    <button
+      key={id}
+      onClick={() => setTab(id)}
+      className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors ${
+        tab === id
+          ? "border-indigo-600 text-indigo-600"
+          : "border-transparent text-gray-500 hover:text-gray-800"
+      }`}
+    >
+      <Icon size={15} />
+      {label}
+    </button>
+  );
 
   return (
     <div className="p-8 max-w-5xl space-y-6">
       {/* Header + product selector */}
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Конструктор тарифов</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Тарифы и платежи</h1>
           <p className="text-sm text-gray-500 mt-1">
-            Per-product: для каждого продукта свои тарифы, лимиты и цены за дополнительные места команды
+            Per-product: для каждого продукта свои тарифы, лимиты, цены команды и платёжные провайдеры
           </p>
         </div>
         <div className="flex gap-2 items-center">
+          <span className="text-xs text-gray-500">Продукт:</span>
           <select
             value={product}
             onChange={e => setProduct(e.target.value)}
             className="h-9 rounded-lg border border-gray-200 bg-white px-3 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
           >
-            {PRODUCTS.filter(p => p.slug !== "main").map(p => (
+            {PRODUCT_OPTIONS.map(p => (
               <option key={p.slug} value={p.slug}>{p.label}</option>
             ))}
           </select>
-          <button
-            onClick={resetToDefaults}
-            className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors"
-          >
-            <RefreshCw size={14} />
-            Сбросить к дефолтам
-          </button>
+          {tab === "plans" && (
+            <button
+              onClick={resetToDefaults}
+              className={btnOutline}
+              title="Сбросить к дефолтам"
+            >
+              <RefreshCw size={14} />
+              Сбросить
+            </button>
+          )}
         </div>
       </div>
 
-      {/* === Названия + активность === */}
-      <div className={card}>
-        <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-violet-50">
-            <Settings2 size={16} className="text-violet-600" />
-          </div>
-          <div>
-            <p className="text-sm font-semibold text-gray-900">Названия и активность тарифов</p>
-            <p className="text-xs text-gray-500">Отображаемое название и доступность тарифа в Billing</p>
-          </div>
-        </div>
+      {/* Подсказка про текущий продукт */}
+      <div className="rounded-lg border border-indigo-100 bg-indigo-50 px-4 py-3 text-sm text-indigo-900">
+        Сейчас редактируете <span className="font-semibold">{productLabel}</span>.
+        Все настройки ниже сохраняются для этого продукта отдельно.
+      </div>
 
-        <div className="space-y-3">
-          {(["free", "pro", "enterprise"] as PlanKey[]).map(plan => (
-            <div key={plan} className="flex items-center gap-3">
-              <span className={`text-xs font-semibold px-2.5 py-1 rounded-full w-24 text-center ${PLAN_COLORS[plan]}`}>
-                {plan === "enterprise" ? "Business" : plan.charAt(0).toUpperCase() + plan.slice(1)}
-              </span>
-              <input
-                type="text"
-                value={names[plan]}
-                onChange={e => setNames(prev => ({ ...prev, [plan]: e.target.value }))}
-                placeholder="Название"
-                className={`${inp} w-48`}
-              />
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={active[plan]}
-                  onChange={e => setActive(prev => ({ ...prev, [plan]: e.target.checked }))}
-                  className="rounded border-gray-300"
-                />
-                <span className="text-sm text-gray-700">Активен</span>
-              </label>
+      {/* Tabs */}
+      <div className="flex items-center border-b border-gray-200 -mt-2">
+        {tabBtn("plans", "Тарифы", Sparkles)}
+        {tabBtn("providers", "Платёжные провайдеры", Zap)}
+        {tabBtn("subscriptions", "Подписки", Receipt)}
+      </div>
+
+      {loading ? (
+        <div className="space-y-4">
+          {[1, 2, 3, 4].map(i => (
+            <div key={i} className="rounded-xl border border-gray-200 bg-white p-6 animate-pulse space-y-3">
+              <div className="h-5 bg-gray-100 rounded w-40" />
+              <div className="h-9 bg-gray-100 rounded" />
+              <div className="h-9 bg-gray-100 rounded w-1/2" />
             </div>
           ))}
         </div>
-
-        <button
-          onClick={() => saveSection("names", async () => {
-            await upsert("plan_names",  names);
-            await upsert("plan_active", active);
-          })}
-          disabled={saving === "names"}
-          className={btnSave("names")}
-        >
-          {saved === "names" ? <><Check size={14} /> Сохранено</> : saving === "names" ? "Сохраняю..." : "Сохранить"}
-        </button>
-      </div>
-
-      {/* === Цены === */}
-      <div className={card}>
-        <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-50">
-            <CreditCard size={16} className="text-indigo-600" />
-          </div>
-          <div>
-            <p className="text-sm font-semibold text-gray-900">Базовые цены/мес (UZS)</p>
-            <p className="text-xs text-gray-500">Цена подписки в месяц. Для Business — это база, к которой прибавляются доп. места.</p>
-          </div>
-        </div>
-
-        <div className="space-y-3">
-          {([
-            { plan: "free" as PlanKey,       label: names.free,       value: 0,                disabled: true,  hint: "Бесплатный — всегда 0" },
-            { plan: "pro" as PlanKey,        label: names.pro,        value: prices.pro,        disabled: false, hint: "Для одиночного мастера/химчистки" },
-            { plan: "enterprise" as PlanKey, label: names.enterprise, value: prices.enterprise, disabled: false, hint: "База для команды" },
-          ]).map(({ plan, label, value, disabled, hint }) => (
-            <div key={plan} className="flex items-center gap-3 flex-wrap">
-              <span className={`text-xs font-semibold px-2.5 py-1 rounded-full w-24 text-center ${PLAN_COLORS[plan]}`}>
-                {label}
-              </span>
-              <input
-                type="number"
-                min={0}
-                step={1000}
-                disabled={disabled}
-                value={value}
-                onChange={e => setPrices(prev => ({ ...prev, [plan]: parseInt(e.target.value) || 0 }))}
-                className={`${inp} w-40`}
-              />
-              <span className="text-xs text-gray-400 whitespace-nowrap">UZS / мес</span>
-              <span className="text-xs text-gray-400 italic">{hint}</span>
-            </div>
-          ))}
-        </div>
-
-        <button
-          onClick={() => saveSection("prices", () => upsert("plan_prices", prices))}
-          disabled={saving === "prices"}
-          className={btnSave("prices")}
-        >
-          {saved === "prices" ? <><Check size={14} /> Сохранено</> : saving === "prices" ? "Сохраняю..." : "Сохранить"}
-        </button>
-      </div>
-
-      {/* === Per-seat биллинг (Business) === */}
-      <div className={card}>
-        <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-purple-50">
-            <Users size={16} className="text-purple-600" />
-          </div>
-          <div>
-            <p className="text-sm font-semibold text-gray-900">Команда (Business): per-seat биллинг</p>
-            <p className="text-xs text-gray-500">Сколько мест включено в базу и за сколько продаётся каждое дополнительное</p>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div>
-            <label className="text-xs font-medium text-gray-600 mb-1 block">Включено мест в базу</label>
-            <input
-              type="number"
-              min={1}
-              max={100}
-              value={seatPricing.enterprise.seats_included}
-              onChange={e => setSeat(prev => ({
-                ...prev,
-                enterprise: { ...prev.enterprise, seats_included: parseInt(e.target.value) || 1 },
-              }))}
-              className={inp}
-            />
-            <p className="text-[11px] text-gray-400 mt-1">
-              Считая владельца? Обычно нет — это лимит для сотрудников
-            </p>
-          </div>
-          <div>
-            <label className="text-xs font-medium text-gray-600 mb-1 block">Цена за доп. место (UZS)</label>
-            <input
-              type="number"
-              min={0}
-              step={1000}
-              value={seatPricing.enterprise.additional_seat_price}
-              onChange={e => setSeat(prev => ({
-                ...prev,
-                enterprise: { ...prev.enterprise, additional_seat_price: parseInt(e.target.value) || 0 },
-              }))}
-              className={inp}
-            />
-            <p className="text-[11px] text-gray-400 mt-1">
-              Доплата сверх включённых
-            </p>
-          </div>
-          <div>
-            <label className="text-xs font-medium text-gray-600 mb-1 block">Максимум мест</label>
-            <input
-              type="number"
-              min={1}
-              max={100}
-              value={seatPricing.enterprise.max_seats}
-              onChange={e => setSeat(prev => ({
-                ...prev,
-                enterprise: { ...prev.enterprise, max_seats: parseInt(e.target.value) || 1 },
-              }))}
-              className={inp}
-            />
-            <p className="text-[11px] text-gray-400 mt-1">
-              Дальше — Enterprise по договору
-            </p>
-          </div>
-        </div>
-
-        {/* Превью */}
-        <div className="rounded-lg border border-purple-200 bg-purple-50 p-4">
-          <p className="text-xs font-semibold text-purple-900 mb-3 uppercase tracking-wide">
-            <Sparkles size={12} className="inline mr-1" /> Превью цены подписки
-          </p>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 text-sm">
-            {pricePreview.map(({ seats, total }) => (
-              <div key={seats} className="bg-white rounded-md p-2 border border-purple-100">
-                <div className="text-[11px] text-gray-500">{seats} {seats === 1 ? "сотрудник" : "сотр."}</div>
-                <div className="font-semibold text-purple-900 mt-0.5">{total.toLocaleString("ru-RU")} <span className="text-[10px] text-gray-500">сум</span></div>
+      ) : tab === "plans" ? (
+        <>
+          {/* === Названия + активность === */}
+          <div className={card}>
+            <div className="flex items-center gap-3">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-violet-50">
+                <Settings2 size={16} className="text-violet-600" />
               </div>
-            ))}
-          </div>
-        </div>
+              <div>
+                <p className="text-sm font-semibold text-gray-900">Названия и активность тарифов</p>
+                <p className="text-xs text-gray-500">Отображаемое название и доступность тарифа в Billing</p>
+              </div>
+            </div>
 
-        <button
-          onClick={() => saveSection("seat", () => upsert("plan_seat_pricing", seatPricing))}
-          disabled={saving === "seat"}
-          className={btnSave("seat")}
-        >
-          {saved === "seat" ? <><Check size={14} /> Сохранено</> : saving === "seat" ? "Сохраняю..." : "Сохранить"}
-        </button>
-      </div>
-
-      {/* === Лимиты === */}
-      <div className={card}>
-        <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-orange-50">
-            <Settings2 size={16} className="text-orange-600" />
-          </div>
-          <div>
-            <p className="text-sm font-semibold text-gray-900">Лимиты планов</p>
-            <p className="text-xs text-gray-500">Пустое поле = без лимита (∞)</p>
-          </div>
-        </div>
-
-        <div className="overflow-x-auto rounded-lg border border-gray-200">
-          <table className="w-full text-sm min-w-[480px]">
-            <thead className="bg-gray-50 border-b border-gray-200">
-              <tr>
-                <th className="text-left px-4 py-2.5 text-xs font-medium text-gray-500">Метрика</th>
-                <th className="text-center px-3 py-2.5 text-xs font-medium text-gray-500 w-12">Вкл</th>
-                <th className="text-center px-3 py-2.5 text-xs font-medium text-gray-500">Free</th>
-                <th className="text-center px-3 py-2.5 text-xs font-medium text-gray-500">Pro</th>
-                <th className="text-center px-3 py-2.5 text-xs font-medium text-gray-500">Business</th>
-              </tr>
-            </thead>
-            <tbody>
-              {limits.map(row => (
-                <tr key={row.key} className="border-b border-gray-100 last:border-0">
-                  <td className="px-4 py-2.5 text-sm text-gray-700">{LIMIT_LABELS[row.key] || row.key}</td>
-                  <td className="px-3 py-2.5 text-center">
+            <div className="space-y-3">
+              {(["free", "pro", "enterprise"] as PlanKey[]).map(plan => (
+                <div key={plan} className="flex items-center gap-3">
+                  <span className={`text-xs font-semibold px-2.5 py-1 rounded-full w-24 text-center ${PLAN_COLORS[plan]}`}>
+                    {plan === "enterprise" ? "Business" : plan.charAt(0).toUpperCase() + plan.slice(1)}
+                  </span>
+                  <input
+                    type="text"
+                    value={names[plan]}
+                    onChange={e => setNames(prev => ({ ...prev, [plan]: e.target.value }))}
+                    placeholder="Название"
+                    className={`${inp} w-48`}
+                  />
+                  <label className="flex items-center gap-2 cursor-pointer">
                     <input
                       type="checkbox"
-                      checked={row.enabled}
-                      onChange={e => toggleLimit(row.key, e.target.checked)}
+                      checked={active[plan]}
+                      onChange={e => setActive(prev => ({ ...prev, [plan]: e.target.checked }))}
                       className="rounded border-gray-300"
                     />
-                  </td>
-                  {(["free", "pro", "enterprise"] as PlanKey[]).map(plan => (
-                    <td key={plan} className="px-3 py-2.5 text-center">
-                      <input
-                        type="number"
-                        min={0}
-                        disabled={!row.enabled}
-                        value={row[plan] ?? ""}
-                        placeholder="∞"
-                        onChange={e => patchLimit(row.key, plan, e.target.value)}
-                        className={`${inp} max-w-[80px] text-center disabled:opacity-50`}
-                      />
-                    </td>
-                  ))}
-                </tr>
+                    <span className="text-sm text-gray-700">Активен</span>
+                  </label>
+                </div>
               ))}
-            </tbody>
-          </table>
-        </div>
+            </div>
 
-        <button
-          onClick={() => saveSection("limits", () => upsert("plan_limits", limits))}
-          disabled={saving === "limits"}
-          className={btnSave("limits")}
-        >
-          {saved === "limits" ? <><Check size={14} /> Сохранено</> : saving === "limits" ? "Сохраняю..." : "Сохранить"}
-        </button>
-      </div>
-
-      {/* === Фичи (списки) === */}
-      <div className={card}>
-        <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-50">
-            <Sparkles size={16} className="text-emerald-600" />
+            <button
+              onClick={() => saveSection("names", async () => {
+                await upsert("plan_names",  names);
+                await upsert("plan_active", active);
+              })}
+              disabled={saving === "names"}
+              className={btnSave("names")}
+            >
+              {saved === "names" ? <><Check size={14} /> Сохранено</> : saving === "names" ? "Сохраняю..." : "Сохранить"}
+            </button>
           </div>
-          <div>
-            <p className="text-sm font-semibold text-gray-900">Фичи тарифов</p>
-            <p className="text-xs text-gray-500">Список преимуществ, который видят клиенты на странице Billing</p>
-          </div>
-        </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {(["free", "pro", "enterprise"] as PlanKey[]).map(plan => (
-            <div key={plan} className="rounded-lg border border-gray-200 p-4">
-              <div className="flex items-center gap-2 mb-3">
-                <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${PLAN_COLORS[plan]}`}>
-                  {names[plan]}
-                </span>
+          {/* === Цены === */}
+          <div className={card}>
+            <div className="flex items-center gap-3">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-50">
+                <CreditCard size={16} className="text-indigo-600" />
               </div>
-              <ul className="space-y-2 mb-3">
-                {features[plan].map((f, i) => (
-                  <li key={i} className="flex items-start gap-2 text-sm text-gray-700">
-                    <span className="text-emerald-500 mt-0.5">✓</span>
-                    <span className="flex-1">{f}</span>
-                    <button
-                      onClick={() => removeFeature(plan, i)}
-                      className="text-gray-300 hover:text-red-500 transition-colors"
-                    >
-                      <X size={14} />
-                    </button>
-                  </li>
-                ))}
-              </ul>
-              <div className="flex gap-1.5">
-                <input
-                  type="text"
-                  value={newFeat[plan]}
-                  onChange={e => setNewFeat(prev => ({ ...prev, [plan]: e.target.value }))}
-                  onKeyDown={e => e.key === "Enter" && addFeature(plan)}
-                  placeholder="Добавить фичу..."
-                  className={`${inp} text-sm`}
-                />
-                <button
-                  onClick={() => addFeature(plan)}
-                  className="inline-flex h-9 items-center justify-center rounded-lg bg-gray-900 px-2.5 text-white hover:bg-gray-800 transition-colors"
-                >
-                  <Plus size={14} />
-                </button>
+              <div>
+                <p className="text-sm font-semibold text-gray-900">Базовые цены/мес (UZS)</p>
+                <p className="text-xs text-gray-500">Цена подписки в месяц. Для Business — это база, к которой прибавляются доп. места.</p>
               </div>
             </div>
-          ))}
-        </div>
 
+            <div className="space-y-3">
+              {([
+                { plan: "free" as PlanKey,       label: names.free,       value: 0,                disabled: true,  hint: "Бесплатный — всегда 0" },
+                { plan: "pro" as PlanKey,        label: names.pro,        value: prices.pro,        disabled: false, hint: "Для одиночного мастера/химчистки" },
+                { plan: "enterprise" as PlanKey, label: names.enterprise, value: prices.enterprise, disabled: false, hint: "База для команды" },
+              ]).map(({ plan, label, value, disabled, hint }) => (
+                <div key={plan} className="flex items-center gap-3 flex-wrap">
+                  <span className={`text-xs font-semibold px-2.5 py-1 rounded-full w-24 text-center ${PLAN_COLORS[plan]}`}>
+                    {label}
+                  </span>
+                  <input
+                    type="number"
+                    min={0}
+                    step={1000}
+                    disabled={disabled}
+                    value={value}
+                    onChange={e => setPrices(prev => ({ ...prev, [plan]: parseInt(e.target.value) || 0 }))}
+                    className={`${inp} w-40`}
+                  />
+                  <span className="text-xs text-gray-400 whitespace-nowrap">UZS / мес</span>
+                  <span className="text-xs text-gray-400 italic">{hint}</span>
+                </div>
+              ))}
+            </div>
+
+            <button
+              onClick={() => saveSection("prices", () => upsert("plan_prices", prices))}
+              disabled={saving === "prices"}
+              className={btnSave("prices")}
+            >
+              {saved === "prices" ? <><Check size={14} /> Сохранено</> : saving === "prices" ? "Сохраняю..." : "Сохранить"}
+            </button>
+          </div>
+
+          {/* === Per-seat биллинг (Business) === */}
+          <div className={card}>
+            <div className="flex items-center gap-3">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-purple-50">
+                <Users size={16} className="text-purple-600" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-gray-900">Команда (Business): per-seat биллинг</p>
+                <p className="text-xs text-gray-500">Сколько мест включено в базу и за сколько продаётся каждое дополнительное</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="text-xs font-medium text-gray-600 mb-1 block">Включено мест в базу</label>
+                <input
+                  type="number"
+                  min={1}
+                  max={100}
+                  value={seatPricing.enterprise.seats_included}
+                  onChange={e => setSeat(prev => ({
+                    ...prev,
+                    enterprise: { ...prev.enterprise, seats_included: parseInt(e.target.value) || 1 },
+                  }))}
+                  className={inp}
+                />
+                <p className="text-[11px] text-gray-400 mt-1">
+                  Считая владельца? Обычно нет — это лимит для сотрудников
+                </p>
+              </div>
+              <div>
+                <label className="text-xs font-medium text-gray-600 mb-1 block">Цена за доп. место (UZS)</label>
+                <input
+                  type="number"
+                  min={0}
+                  step={1000}
+                  value={seatPricing.enterprise.additional_seat_price}
+                  onChange={e => setSeat(prev => ({
+                    ...prev,
+                    enterprise: { ...prev.enterprise, additional_seat_price: parseInt(e.target.value) || 0 },
+                  }))}
+                  className={inp}
+                />
+                <p className="text-[11px] text-gray-400 mt-1">
+                  Доплата сверх включённых
+                </p>
+              </div>
+              <div>
+                <label className="text-xs font-medium text-gray-600 mb-1 block">Максимум мест</label>
+                <input
+                  type="number"
+                  min={1}
+                  max={100}
+                  value={seatPricing.enterprise.max_seats}
+                  onChange={e => setSeat(prev => ({
+                    ...prev,
+                    enterprise: { ...prev.enterprise, max_seats: parseInt(e.target.value) || 1 },
+                  }))}
+                  className={inp}
+                />
+                <p className="text-[11px] text-gray-400 mt-1">
+                  Дальше — Enterprise по договору
+                </p>
+              </div>
+            </div>
+
+            {/* Превью */}
+            <div className="rounded-lg border border-purple-200 bg-purple-50 p-4">
+              <p className="text-xs font-semibold text-purple-900 mb-3 uppercase tracking-wide">
+                <Sparkles size={12} className="inline mr-1" /> Превью цены подписки
+              </p>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 text-sm">
+                {pricePreview.map(({ seats, total }) => (
+                  <div key={seats} className="bg-white rounded-md p-2 border border-purple-100">
+                    <div className="text-[11px] text-gray-500">{seats} {seats === 1 ? "сотрудник" : "сотр."}</div>
+                    <div className="font-semibold text-purple-900 mt-0.5">{total.toLocaleString("ru-RU")} <span className="text-[10px] text-gray-500">сум</span></div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <button
+              onClick={() => saveSection("seat", () => upsert("plan_seat_pricing", seatPricing))}
+              disabled={saving === "seat"}
+              className={btnSave("seat")}
+            >
+              {saved === "seat" ? <><Check size={14} /> Сохранено</> : saving === "seat" ? "Сохраняю..." : "Сохранить"}
+            </button>
+          </div>
+
+          {/* === Лимиты === */}
+          <div className={card}>
+            <div className="flex items-center gap-3">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-orange-50">
+                <Settings2 size={16} className="text-orange-600" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-gray-900">Лимиты планов</p>
+                <p className="text-xs text-gray-500">Пустое поле = без лимита (∞)</p>
+              </div>
+            </div>
+
+            <div className="overflow-x-auto rounded-lg border border-gray-200">
+              <table className="w-full text-sm min-w-[480px]">
+                <thead className="bg-gray-50 border-b border-gray-200">
+                  <tr>
+                    <th className="text-left px-4 py-2.5 text-xs font-medium text-gray-500">Метрика</th>
+                    <th className="text-center px-3 py-2.5 text-xs font-medium text-gray-500 w-12">Вкл</th>
+                    <th className="text-center px-3 py-2.5 text-xs font-medium text-gray-500">{names.free || "Free"}</th>
+                    <th className="text-center px-3 py-2.5 text-xs font-medium text-gray-500">{names.pro || "Pro"}</th>
+                    <th className="text-center px-3 py-2.5 text-xs font-medium text-gray-500">{names.enterprise || "Business"}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {limits.map(row => (
+                    <tr key={row.key} className="border-b border-gray-100 last:border-0">
+                      <td className="px-4 py-2.5 text-sm text-gray-700">{LIMIT_LABELS[row.key] || row.key}</td>
+                      <td className="px-3 py-2.5 text-center">
+                        <input
+                          type="checkbox"
+                          checked={row.enabled}
+                          onChange={e => toggleLimit(row.key, e.target.checked)}
+                          className="rounded border-gray-300"
+                        />
+                      </td>
+                      {(["free", "pro", "enterprise"] as PlanKey[]).map(plan => (
+                        <td key={plan} className="px-3 py-2.5 text-center">
+                          <input
+                            type="number"
+                            min={0}
+                            disabled={!row.enabled}
+                            value={row[plan] ?? ""}
+                            placeholder="∞"
+                            onChange={e => patchLimit(row.key, plan, e.target.value)}
+                            className={`${inp} max-w-[80px] text-center disabled:opacity-50`}
+                          />
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <button
+              onClick={() => saveSection("limits", () => upsert("plan_limits", limits))}
+              disabled={saving === "limits"}
+              className={btnSave("limits")}
+            >
+              {saved === "limits" ? <><Check size={14} /> Сохранено</> : saving === "limits" ? "Сохраняю..." : "Сохранить"}
+            </button>
+          </div>
+
+          {/* === Фичи (списки) === */}
+          <div className={card}>
+            <div className="flex items-center gap-3">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-50">
+                <ListChecks size={16} className="text-emerald-600" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-gray-900">Фичи тарифов</p>
+                <p className="text-xs text-gray-500">Список преимуществ, который видят клиенты на странице Billing</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {(["free", "pro", "enterprise"] as PlanKey[]).map(plan => (
+                <div key={plan} className="rounded-lg border border-gray-200 p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${PLAN_COLORS[plan]}`}>
+                      {names[plan]}
+                    </span>
+                  </div>
+                  <ul className="space-y-2 mb-3">
+                    {features[plan].map((f, i) => (
+                      <li key={i} className="flex items-start gap-2 text-sm text-gray-700">
+                        <Check size={14} className="text-emerald-500 mt-0.5 shrink-0" />
+                        <span className="flex-1">{f}</span>
+                        <button
+                          onClick={() => removeFeature(plan, i)}
+                          className="text-gray-300 hover:text-red-500 transition-colors"
+                        >
+                          <X size={14} />
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                  <div className="flex gap-1.5">
+                    <input
+                      type="text"
+                      value={newFeat[plan]}
+                      onChange={e => setNewFeat(prev => ({ ...prev, [plan]: e.target.value }))}
+                      onKeyDown={e => e.key === "Enter" && addFeature(plan)}
+                      placeholder="Добавить фичу..."
+                      className={`${inp} text-sm`}
+                    />
+                    <button
+                      onClick={() => addFeature(plan)}
+                      className="inline-flex h-9 items-center justify-center rounded-lg bg-gray-900 px-2.5 text-white hover:bg-gray-800 transition-colors"
+                    >
+                      <Plus size={14} />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <button
+              onClick={() => saveSection("features", () => upsert("plan_features", features))}
+              disabled={saving === "features"}
+              className={btnSave("features")}
+            >
+              {saved === "features" ? <><Check size={14} /> Сохранено</> : saving === "features" ? "Сохраняю..." : "Сохранить"}
+            </button>
+          </div>
+        </>
+      ) : tab === "providers" ? (
+        // ── Платёжные провайдеры ────────────────────────────────────────────
+        <div className="space-y-3">
+          {/* Payme */}
+          {renderProvider(
+            "payme", "Payme", "paycom.uz", "#00A884", providers, toggleProvider,
+            [
+              { label: "Merchant ID", key: "payme_merchant_id", value: paymeMerchant, onChange: setPaymeMerchant, existing: existingKeys },
+              { label: "Secret Key", key: "payme_key", value: paymeKey, onChange: setPaymeKey, existing: existingKeys, password: true },
+            ],
+            () => saveSection("payme", async () => {
+              if (paymeMerchant) await upsert("payme_merchant_id", paymeMerchant);
+              if (paymeKey) await upsert("payme_key", paymeKey);
+              setPaymeMerchant(""); setPaymeKey("");
+              await loadAll();
+            }),
+            saving === "payme", saved === "payme",
+            !paymeMerchant && !paymeKey
+          )}
+
+          {/* Click */}
+          {renderProvider(
+            "click", "Click.uz", "click.uz", "#0066CC", providers, toggleProvider,
+            [
+              { label: "Service ID", key: "click_service_id", value: clickService, onChange: setClickService, existing: existingKeys },
+              { label: "Merchant ID", key: "click_merchant_id", value: clickMerchant, onChange: setClickMerchant, existing: existingKeys },
+              { label: "Merchant User ID", key: "click_user_id", value: clickUserId, onChange: setClickUserId, existing: existingKeys },
+              { label: "Secret Key", key: "click_merchant_key", value: clickKey, onChange: setClickKey, existing: existingKeys, password: true },
+            ],
+            () => saveSection("click", async () => {
+              if (clickService) await upsert("click_service_id", clickService);
+              if (clickMerchant) await upsert("click_merchant_id", clickMerchant);
+              if (clickUserId) await upsert("click_user_id", clickUserId);
+              if (clickKey) await upsert("click_merchant_key", clickKey);
+              setClickService(""); setClickMerchant(""); setClickUserId(""); setClickKey("");
+              await loadAll();
+            }),
+            saving === "click", saved === "click",
+            !clickService && !clickMerchant && !clickUserId && !clickKey
+          )}
+        </div>
+      ) : (
+        // ── Подписки ────────────────────────────────────────────────────────
+        <div className={card}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-50">
+                <RefreshCw size={16} className="text-blue-600" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-gray-900">Активные подписки</p>
+                <p className="text-xs text-gray-500">Последние 20 подписок продукта «{productLabel}»</p>
+              </div>
+            </div>
+            <button onClick={loadAll} className={btnOutline} title="Обновить">
+              <RefreshCw size={13} />
+            </button>
+          </div>
+
+          {subs.length === 0 ? (
+            <div className="text-center py-8 text-sm text-gray-400">Нет подписок</div>
+          ) : (
+            <div className="overflow-x-auto rounded-lg border border-gray-200">
+              <table className="w-full text-sm">
+                <thead className="bg-gray-50 border-b border-gray-200">
+                  <tr>
+                    {["Пользователь", "План", "Провайдер", "Сумма", "Статус", "Истекает"].map(h => (
+                      <th key={h} className="text-left px-4 py-2.5 text-xs font-medium text-gray-500">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {subs.map(sub => (
+                    <tr key={sub.id} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-4 py-3 text-xs font-mono text-gray-500">{sub.user_id?.slice(0, 8)}…</td>
+                      <td className="px-4 py-3">
+                        <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${PLAN_COLORS[sub.plan as PlanKey] ?? "bg-gray-100 text-gray-600"}`}>
+                          {sub.plan}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-xs uppercase text-gray-500">{sub.provider}</td>
+                      <td className="px-4 py-3 text-xs text-gray-700">{sub.amount_uzs?.toLocaleString("ru")} UZS</td>
+                      <td className="px-4 py-3">
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                          sub.status === "active" ? "bg-emerald-100 text-emerald-700" :
+                          sub.status === "cancelled" ? "bg-red-100 text-red-700" :
+                          "bg-gray-100 text-gray-600"
+                        }`}>{sub.status}</span>
+                      </td>
+                      <td className="px-4 py-3 text-xs text-gray-500">
+                        {sub.expires_at ? new Date(sub.expires_at).toLocaleDateString("ru-RU") : "—"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Helper: render payment provider card ──────────────────────────────────────
+
+function renderProvider(
+  id: string, name: string, domain: string, color: string,
+  providers: string[],
+  toggleProvider: (id: string, v: boolean) => void,
+  fields: Array<{ label: string; key: string; value: string; onChange: (v: string) => void; existing?: Record<string, boolean>; password?: boolean }>,
+  onSave: () => void,
+  isSaving: boolean, isSaved: boolean, disabled: boolean
+) {
+  const enabled = providers.includes(id);
+  const inp = "flex h-9 w-full rounded-lg border border-gray-200 bg-white px-3 py-1 text-sm shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500";
+  const btnSave = `inline-flex h-8 items-center gap-1.5 rounded-lg px-4 text-sm font-medium transition-colors disabled:opacity-50 ${isSaved ? "bg-emerald-600 text-white" : "bg-indigo-600 text-white hover:bg-indigo-700"}`;
+
+  return (
+    <div className="rounded-xl border border-gray-200 bg-white shadow-sm p-5 space-y-4">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="h-8 w-8 rounded-lg border border-gray-200 flex items-center justify-center text-xs font-bold" style={{ color }}>
+            {name[0]}
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-gray-900">{name}</p>
+            <p className="text-xs text-gray-400">{domain}</p>
+          </div>
+        </div>
         <button
-          onClick={() => saveSection("features", () => upsert("plan_features", features))}
-          disabled={saving === "features"}
-          className={btnSave("features")}
+          onClick={() => toggleProvider(id, !enabled)}
+          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${enabled ? "bg-indigo-600" : "bg-gray-200"}`}
         >
-          {saved === "features" ? <><Check size={14} /> Сохранено</> : saving === "features" ? "Сохраняю..." : "Сохранить"}
+          <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${enabled ? "translate-x-5" : "translate-x-0.5"}`} />
         </button>
       </div>
+
+      {enabled && (
+        <div className="space-y-3 pt-3 border-t border-gray-100">
+          {fields.map(f => (
+            <div key={f.key} className="space-y-1.5">
+              <label className="text-xs font-medium text-gray-600">{f.label}</label>
+              <input
+                type={f.password ? "password" : "text"}
+                placeholder={f.existing?.[f.key] ? "••••••  (уже задан)" : "Не задан"}
+                value={f.value}
+                onChange={e => f.onChange(e.target.value)}
+                className={inp}
+              />
+            </div>
+          ))}
+          <button onClick={onSave} disabled={disabled || isSaving} className={btnSave}>
+            {isSaved ? "Сохранено ✓" : isSaving ? "Сохраняю..." : "Сохранить"}
+          </button>
+        </div>
+      )}
     </div>
   );
 }
