@@ -167,10 +167,10 @@ export default function AppearanceTab({ product }: { product: string }) {
         } catch { /* ignore */ }
       }
 
-      // Получаем публичный URL логотипа (бакет teams, файл app-logo)
-      // Файл находится в shared bucket — пока лого «общий» для всех продуктов.
+      // Per-product логотип: бакет teams, файл "{product}-app-logo".
+      // Старый ключ value='app-logo' — legacy fallback для shared-логотипа до 2026-05-01.
       if (map.platform_logo) {
-        const { data: pub } = supabase.storage.from("teams").getPublicUrl("app-logo");
+        const { data: pub } = supabase.storage.from("teams").getPublicUrl(map.platform_logo);
         setLogoUrl(pub.publicUrl);
       } else {
         setLogoUrl(null);
@@ -199,22 +199,22 @@ export default function AppearanceTab({ product }: { product: string }) {
 
   async function uploadLogo(file: File) {
     setSaving("platform_logo");
-    // Upload в бакет teams под именем app-logo (без расширения — как в ezze-app)
+    // Per-product: бакет teams, путь "{product}-app-logo".
+    const path = `${product}-app-logo`;
     const { error: upErr } = await supabase.storage
       .from("teams")
-      .upload("app-logo", file, { upsert: true, contentType: file.type });
+      .upload(path, file, { upsert: true, contentType: file.type });
     if (upErr) { setSaving(null); alert("Ошибка загрузки: " + upErr.message); return; }
 
     const { error: setErr } = await supabase
       .from("app_settings")
-      .upsert({ product, key: "platform_logo", value: "app-logo" }, { onConflict: "product,key" });
+      .upsert({ product, key: "platform_logo", value: path }, { onConflict: "product,key" });
     setSaving(null);
     if (setErr) { alert("Ошибка сохранения: " + setErr.message); return; }
 
-    const { data: pub } = supabase.storage.from("teams").getPublicUrl("app-logo");
-    // cache-bust
+    const { data: pub } = supabase.storage.from("teams").getPublicUrl(path);
     setLogoUrl(`${pub.publicUrl}?v=${Date.now()}`);
-    setLogoMarker("app-logo");
+    setLogoMarker(path);
     setSavedKey("platform_logo");
     setTimeout(() => setSavedKey(null), 1500);
   }
