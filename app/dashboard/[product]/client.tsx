@@ -6,14 +6,19 @@ import { Globe } from "lucide-react";
 import { supabase, PRODUCTS, SECTIONS, LANGS } from "../../lib/supabase";
 import ProductTabs from "../../components/ProductTabs";
 import FeaturesTab from "./FeaturesTab";
+import AppearanceTab from "./AppearanceTab";
 
 interface SectionRow { section: string; lang: string; visible: boolean; }
+type Tab = "landing" | "features" | "appearance";
 
 export default function ProductClient({ product }: { product: string }) {
   const productInfo = PRODUCTS.find((p) => p.slug === product);
   const searchParams = useSearchParams();
   const tabParam = searchParams.get("tab") ?? "landing";
-  const tab: "landing" | "features" = tabParam === "features" ? "features" : "landing";
+  const tab: Tab =
+    tabParam === "features" ? "features" :
+    tabParam === "appearance" ? "appearance" :
+    "landing";
 
   const [rows, setRows] = useState<SectionRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -51,7 +56,7 @@ export default function ProductClient({ product }: { product: string }) {
 
   return (
     <div className="p-8">
-      <ProductTabs product={product} active={tab === "features" ? "features" : "landing"} />
+      <ProductTabs product={product} active={tab} />
 
       {tab === "landing" && (
         <LandingSectionsTable product={product} rows={rows} loading={loading} hasRow={hasRow} />
@@ -59,6 +64,10 @@ export default function ProductClient({ product }: { product: string }) {
 
       {tab === "features" && (
         <FeaturesTab product={product} />
+      )}
+
+      {tab === "appearance" && (
+        <AppearanceTab product={product} />
       )}
     </div>
   );
