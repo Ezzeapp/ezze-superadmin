@@ -322,7 +322,7 @@ export default function TeamsPage() {
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   return (
-    <div className="p-6 max-w-6xl">
+    <div className="p-6">
       {productFromUrl && PRODUCTS.find((p) => p.slug === productFromUrl) && (
         <ProductTabs product={productFromUrl} active="teams" />
       )}

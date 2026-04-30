@@ -638,7 +638,7 @@ export default function CatalogPage() {
   const isTypeModalOpen = isNewType || editingType !== null;
 
   return (
-    <div className="p-6 max-w-6xl">
+    <div className="p-6">
       {productFromUrl && PRODUCTS.find((p) => p.slug === productFromUrl) && (
         <ProductTabs product={productFromUrl} active="catalog" />
       )}

@@ -175,7 +175,7 @@ export default function MastersPage() {
   const totalPages = Math.ceil(total / PAGE_SIZE);
 
   return (
-    <div className="p-6 max-w-6xl">
+    <div className="p-6">
       {/* В контексте продукта — ProductTabs сверху */}
       {productFromUrl && PRODUCTS.find((p) => p.slug === productFromUrl) && (
         <ProductTabs product={productFromUrl} active="masters" />
