@@ -323,9 +323,7 @@ export default function TeamsPage() {
 
   return (
     <div className="p-6">
-      {productFromUrl && PRODUCTS.find((p) => p.slug === productFromUrl) && (
-        <ProductTabs product={productFromUrl} active="teams" />
-      )}
+      <ProductTabs product={productFromUrl} active="teams">
 
       {/* Заголовок */}
       <div className="flex items-center gap-3 mb-6">
@@ -823,6 +821,7 @@ export default function TeamsPage() {
           </div>
         </div>
       )}
+      </ProductTabs>
     </div>
   );
 }

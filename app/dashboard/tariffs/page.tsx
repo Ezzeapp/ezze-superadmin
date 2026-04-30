@@ -304,10 +304,8 @@ export default function TariffsPage() {
   );
 
   return (
-    <div className="p-8 max-w-5xl space-y-6">
-      {productFromUrl && PRODUCTS.find((p) => p.slug === productFromUrl) && (
-        <ProductTabs product={productFromUrl} active="tariffs" />
-      )}
+    <div className="p-8 space-y-6">
+      <ProductTabs product={productFromUrl} active="tariffs">
 
       {/* Header + product selector */}
       <div className="flex items-start justify-between gap-4 flex-wrap">
@@ -783,6 +781,7 @@ export default function TariffsPage() {
           )}
         </div>
       )}
+      </ProductTabs>
     </div>
   );
 }

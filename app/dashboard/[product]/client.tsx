@@ -58,23 +58,23 @@ export default function ProductClient({ product }: { product: string }) {
 
   return (
     <div className="p-8">
-      <ProductTabs product={product} active={tab} />
+      <ProductTabs product={product} active={tab}>
+        {tab === "landing" && (
+          <LandingSectionsTable product={product} rows={rows} loading={loading} hasRow={hasRow} />
+        )}
 
-      {tab === "landing" && (
-        <LandingSectionsTable product={product} rows={rows} loading={loading} hasRow={hasRow} />
-      )}
+        {tab === "features" && (
+          <FeaturesTab product={product} />
+        )}
 
-      {tab === "features" && (
-        <FeaturesTab product={product} />
-      )}
+        {tab === "appearance" && (
+          <AppearanceTab product={product} />
+        )}
 
-      {tab === "appearance" && (
-        <AppearanceTab product={product} />
-      )}
-
-      {tab === "home_screen" && (
-        <HomeScreenTab product={product} />
-      )}
+        {tab === "home_screen" && (
+          <HomeScreenTab product={product} />
+        )}
+      </ProductTabs>
     </div>
   );
 }

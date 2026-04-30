@@ -639,9 +639,7 @@ export default function CatalogPage() {
 
   return (
     <div className="p-6">
-      {productFromUrl && PRODUCTS.find((p) => p.slug === productFromUrl) && (
-        <ProductTabs product={productFromUrl} active="catalog" />
-      )}
+      <ProductTabs product={productFromUrl} active="catalog">
 
       {/* Header */}
       <div className="flex items-center gap-3 mb-6">
@@ -1286,6 +1284,7 @@ export default function CatalogPage() {
           </div>
         </div>
       )}
+      </ProductTabs>
     </div>
   );
 }

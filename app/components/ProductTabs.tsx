@@ -24,18 +24,26 @@ const TABS: { id: ProductTab; label: string; icon: any; href: (p: string) => str
 export default function ProductTabs({
   product,
   active,
+  children,
 }: {
-  product: string;
+  product: string | null | undefined;
   active: ProductTab;
+  children?: React.ReactNode;
 }) {
-  const productInfo = PRODUCTS.find((p) => p.slug === product);
-  const ProductIcon = productInfo?.icon;
-  const productLabel = productInfo?.label ?? product;
+  const productInfo = product ? PRODUCTS.find((p) => p.slug === product) : null;
+
+  // Без валидного продукта — рендерим контент без сайдбара
+  if (!productInfo || !product) {
+    return <>{children}</>;
+  }
+
+  const ProductIcon = productInfo.icon;
+  const productLabel = productInfo.label;
 
   return (
-    <div className="mb-6">
+    <div>
       {/* Breadcrumb */}
-      <div className="flex items-center gap-3 mb-4">
+      <div className="flex items-center gap-3 mb-6">
         <Link
           href="/dashboard"
           className="text-sm text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
@@ -49,25 +57,28 @@ export default function ProductTabs({
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{productLabel}</h1>
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-1 border-b border-gray-200 dark:border-gray-800 overflow-x-auto">
-        {TABS.map(({ id, label, icon: Icon, href }) => {
-          const isActive = id === active;
-          return (
-            <Link
-              key={id}
-              href={href(product)}
-              className={`flex items-center gap-2 px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors whitespace-nowrap ${
-                isActive
-                  ? "border-indigo-600 text-indigo-600 dark:text-indigo-400"
-                  : "border-transparent text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
-              }`}
-            >
-              <Icon size={14} />
-              {label}
-            </Link>
-          );
-        })}
+      {/* Layout: vertical sidebar + content */}
+      <div className="flex gap-6">
+        <nav className="w-52 shrink-0 space-y-0.5 self-start">
+          {TABS.map(({ id, label, icon: Icon, href }) => {
+            const isActive = id === active;
+            return (
+              <Link
+                key={id}
+                href={href(product)}
+                className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  isActive
+                    ? "bg-indigo-50 text-indigo-700 dark:bg-indigo-900/20 dark:text-indigo-300"
+                    : "text-gray-600 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-white dark:hover:bg-gray-800"
+                }`}
+              >
+                <Icon size={15} className="shrink-0" />
+                <span className="truncate">{label}</span>
+              </Link>
+            );
+          })}
+        </nav>
+        <div className="flex-1 min-w-0">{children}</div>
       </div>
     </div>
   );

@@ -176,10 +176,7 @@ export default function MastersPage() {
 
   return (
     <div className="p-6">
-      {/* В контексте продукта — ProductTabs сверху */}
-      {productFromUrl && PRODUCTS.find((p) => p.slug === productFromUrl) && (
-        <ProductTabs product={productFromUrl} active="masters" />
-      )}
+      <ProductTabs product={productFromUrl} active="masters">
 
       {/* Заголовок */}
       <div className="flex items-center gap-3 mb-6">
@@ -467,6 +464,7 @@ export default function MastersPage() {
           </div>
         </div>
       )}
+      </ProductTabs>
     </div>
   );
 }
