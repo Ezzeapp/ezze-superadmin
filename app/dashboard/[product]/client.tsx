@@ -7,9 +7,10 @@ import { supabase, PRODUCTS, SECTIONS, LANGS } from "../../lib/supabase";
 import ProductTabs from "../../components/ProductTabs";
 import FeaturesTab from "./FeaturesTab";
 import AppearanceTab from "./AppearanceTab";
+import HomeScreenTab from "./HomeScreenTab";
 
 interface SectionRow { section: string; lang: string; visible: boolean; }
-type Tab = "landing" | "features" | "appearance";
+type Tab = "landing" | "features" | "appearance" | "home_screen";
 
 export default function ProductClient({ product }: { product: string }) {
   const productInfo = PRODUCTS.find((p) => p.slug === product);
@@ -18,6 +19,7 @@ export default function ProductClient({ product }: { product: string }) {
   const tab: Tab =
     tabParam === "features" ? "features" :
     tabParam === "appearance" ? "appearance" :
+    tabParam === "home_screen" ? "home_screen" :
     "landing";
 
   const [rows, setRows] = useState<SectionRow[]>([]);
@@ -68,6 +70,10 @@ export default function ProductClient({ product }: { product: string }) {
 
       {tab === "appearance" && (
         <AppearanceTab product={product} />
+      )}
+
+      {tab === "home_screen" && (
+        <HomeScreenTab product={product} />
       )}
     </div>
   );

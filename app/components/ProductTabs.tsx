@@ -1,23 +1,24 @@
 "use client";
 import Link from "next/link";
 import {
-  LayoutGrid, Zap, Palette, CreditCard, Users, ContactRound, UsersRound, BookOpen,
+  LayoutGrid, Zap, Palette, Boxes, CreditCard, Users, ContactRound, UsersRound, BookOpen,
 } from "lucide-react";
 import { PRODUCTS } from "../lib/constants";
 
 export type ProductTab =
-  | "landing" | "features" | "appearance" | "tariffs"
+  | "landing" | "features" | "appearance" | "home_screen" | "tariffs"
   | "masters" | "clients"  | "teams" | "catalog";
 
 const TABS: { id: ProductTab; label: string; icon: any; href: (p: string) => string }[] = [
-  { id: "landing",    label: "Лендинг",    icon: LayoutGrid,    href: (p) => `/dashboard/${p}` },
-  { id: "features",   label: "Функции",    icon: Zap,           href: (p) => `/dashboard/${p}?tab=features` },
-  { id: "appearance", label: "Оформление", icon: Palette,       href: (p) => `/dashboard/${p}?tab=appearance` },
-  { id: "tariffs",    label: "Тарифы",     icon: CreditCard,    href: (p) => `/dashboard/tariffs?product=${p}` },
-  { id: "masters",    label: "Мастера",    icon: Users,         href: (p) => `/dashboard/masters?product=${p}` },
-  { id: "clients",    label: "Клиенты",    icon: ContactRound,  href: (p) => `/dashboard/clients?product=${p}` },
-  { id: "teams",      label: "Команды",    icon: UsersRound,    href: (p) => `/dashboard/teams?product=${p}` },
-  { id: "catalog",    label: "Справочник", icon: BookOpen,      href: (p) => `/dashboard/catalog?product=${p}` },
+  { id: "landing",     label: "Лендинг",       icon: LayoutGrid,    href: (p) => `/dashboard/${p}` },
+  { id: "features",    label: "Функции",       icon: Zap,           href: (p) => `/dashboard/${p}?tab=features` },
+  { id: "appearance",  label: "Оформление",    icon: Palette,       href: (p) => `/dashboard/${p}?tab=appearance` },
+  { id: "home_screen", label: "Главный экран", icon: Boxes,         href: (p) => `/dashboard/${p}?tab=home_screen` },
+  { id: "tariffs",     label: "Тарифы",        icon: CreditCard,    href: (p) => `/dashboard/tariffs?product=${p}` },
+  { id: "masters",     label: "Мастера",       icon: Users,         href: (p) => `/dashboard/masters?product=${p}` },
+  { id: "clients",     label: "Клиенты",       icon: ContactRound,  href: (p) => `/dashboard/clients?product=${p}` },
+  { id: "teams",       label: "Команды",       icon: UsersRound,    href: (p) => `/dashboard/teams?product=${p}` },
+  { id: "catalog",     label: "Справочник",    icon: BookOpen,      href: (p) => `/dashboard/catalog?product=${p}` },
 ];
 
 export default function ProductTabs({
