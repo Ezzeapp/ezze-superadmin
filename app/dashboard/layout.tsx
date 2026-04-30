@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
-import { Zap, LayoutGrid, Info, KeyRound, Globe } from "lucide-react";
+import { Zap, LayoutGrid, Info, KeyRound, Globe, BookOpen } from "lucide-react";
 import { supabase, PRODUCTS } from "../lib/supabase";
 import ThemeToggle from "../components/ThemeToggle";
 
@@ -106,6 +106,26 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             { href: "/dashboard/main",              icon: Globe,      label: "Главная" },
             { href: "/dashboard/settings/about",    icon: Info,       label: "О нас / Контакты" },
             { href: "/dashboard/settings/products", icon: LayoutGrid, label: "Продукты (CRUD)" },
+          ].map(({ href, icon: Icon, label }) => {
+            const active = pathname.startsWith(href);
+            return (
+              <Link
+                key={href}
+                href={href}
+                className={`${linkBase} ${active ? linkActive : linkInactive}`}
+              >
+                <Icon size={14} />
+                <span className="truncate">{label}</span>
+              </Link>
+            );
+          })}
+
+          {/* Справочники */}
+          <div className="px-4 pt-4 pb-1">
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-600">Справочники</p>
+          </div>
+          {[
+            { href: "/dashboard/rental-catalog", icon: BookOpen, label: "Аренда — справочник" },
           ].map(({ href, icon: Icon, label }) => {
             const active = pathname.startsWith(href);
             return (
