@@ -1,10 +1,12 @@
 "use client";
 import { useState, useEffect, useMemo, useCallback } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   Search, RefreshCw, UsersRound, Trash2, X, AlertCircle,
   ChevronRight, Crown, Globe, Lock, UserMinus, Pause, Play,
 } from "lucide-react";
 import { supabase, PRODUCTS } from "../../lib/supabase";
+import ProductTabs from "../../components/ProductTabs";
 
 const PRODUCT_TABS = [
   { slug: "all", label: "Все" },
@@ -89,9 +91,11 @@ type Member = {
 const PAGE_SIZE = 30;
 
 export default function TeamsPage() {
+  const searchParams = useSearchParams();
+  const productFromUrl = searchParams.get("product");
   const [teams, setTeams] = useState<Team[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedProduct, setSelectedProduct] = useState("all");
+  const [selectedProduct, setSelectedProduct] = useState(productFromUrl || "all");
   const [search, setSearch] = useState("");
   const [debounced, setDebounced] = useState("");
   const [page, setPage] = useState(0);
@@ -319,13 +323,18 @@ export default function TeamsPage() {
 
   return (
     <div className="p-6 max-w-6xl">
+      {productFromUrl && PRODUCTS.find((p) => p.slug === productFromUrl) && (
+        <ProductTabs product={productFromUrl} active="teams" />
+      )}
+
       {/* Заголовок */}
       <div className="flex items-center gap-3 mb-6">
         <UsersRound size={20} className="text-indigo-600" />
         <div>
           <h1 className="text-lg font-semibold text-gray-900 dark:text-white">Команды</h1>
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            Все команды платформы · {total.toLocaleString("ru-RU")} шт.
+            {productFromUrl ? `${productFromUrl} · ` : "Все · "}
+            {total.toLocaleString("ru-RU")} шт.
           </p>
         </div>
         <button
@@ -340,26 +349,28 @@ export default function TeamsPage() {
         </button>
       </div>
 
-      {/* Фильтр по продукту */}
-      <div className="flex flex-wrap gap-1.5 mb-4">
-        {PRODUCT_TABS.map((tab) => (
-          <button
-            key={tab.slug}
-            onClick={() => {
-              setSelectedProduct(tab.slug);
-              setPage(0);
-            }}
-            className={[
-              "px-3 py-1.5 rounded-lg text-xs font-medium transition-colors",
-              selectedProduct === tab.slug
-                ? "bg-indigo-600 text-white"
-                : "bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700",
-            ].join(" ")}
-          >
-            {tab.slug !== "all" && (PRODUCT_EMOJI[tab.slug] || "")} {tab.label}
-          </button>
-        ))}
-      </div>
+      {/* Фильтр по продукту — скрываем если зашли из контекста продукта */}
+      {!productFromUrl && (
+        <div className="flex flex-wrap gap-1.5 mb-4">
+          {PRODUCT_TABS.map((tab) => (
+            <button
+              key={tab.slug}
+              onClick={() => {
+                setSelectedProduct(tab.slug);
+                setPage(0);
+              }}
+              className={[
+                "px-3 py-1.5 rounded-lg text-xs font-medium transition-colors",
+                selectedProduct === tab.slug
+                  ? "bg-indigo-600 text-white"
+                  : "bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700",
+              ].join(" ")}
+            >
+              {tab.slug !== "all" && (PRODUCT_EMOJI[tab.slug] || "")} {tab.label}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Поиск */}
       <div className="relative mb-4">

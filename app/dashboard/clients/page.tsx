@@ -1,10 +1,12 @@
 "use client";
 import { useState, useEffect, useMemo, useCallback } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   Search, ChevronDown, ChevronRight, RefreshCw, ContactRound,
   Trash2, Send, History, X, AlertCircle,
 } from "lucide-react";
-import { supabase } from "../../lib/supabase";
+import { supabase, PRODUCTS } from "../../lib/supabase";
+import ProductTabs from "../../components/ProductTabs";
 
 // ─── Типы ─────────────────────────────────────────────────────────────
 type MasterRef = {
@@ -60,6 +62,8 @@ const PAGE_SIZE = 30;
 
 // ═════════════════════════════════════════════════════════════════════
 export default function ClientsPage() {
+  const searchParams = useSearchParams();
+  const productFromUrl = searchParams.get("product");
   const [rows, setRows]           = useState<PlatformClient[]>([]);
   const [total, setTotal]         = useState(0);
   const [loading, setLoading]     = useState(true);
@@ -240,13 +244,19 @@ export default function ClientsPage() {
   // ─── Рендер ─────────────────────────────────────────────────────
   return (
     <div className="p-6 max-w-6xl">
+      {/* В контексте продукта — ProductTabs сверху */}
+      {productFromUrl && PRODUCTS.find((p) => p.slug === productFromUrl) && (
+        <ProductTabs product={productFromUrl} active="clients" />
+      )}
+
       {/* Заголовок */}
       <div className="flex items-center gap-3 mb-6">
         <ContactRound size={20} className="text-indigo-600" />
         <div>
           <h1 className="text-lg font-semibold text-gray-900 dark:text-white">Клиенты</h1>
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            Все клиенты платформы · {total.toLocaleString("ru-RU")} чел.
+            {productFromUrl ? `${productFromUrl} · ` : "Все · "}
+            {total.toLocaleString("ru-RU")} чел.
           </p>
         </div>
         <button

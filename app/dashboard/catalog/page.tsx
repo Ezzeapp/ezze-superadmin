@@ -1,5 +1,7 @@
 "use client";
 import { useState, useEffect, useMemo, useRef } from "react";
+import { useSearchParams } from "next/navigation";
+import ProductTabs from "../../components/ProductTabs";
 import {
   Search, Plus, RefreshCw, BookOpen, Pencil, Trash2, X, Check, ChevronUp, ChevronDown,
   ChevronsUpDown, GripVertical, Shirt, LayoutGrid, Sofa, Footprints, Wind, BedDouble,
@@ -133,8 +135,10 @@ function exportToCSV(rows: GlobalService[] | GlobalProduct[], tab: "services" | 
 
 // ── Component ─────────────────────────────────────────────────────────────────
 export default function CatalogPage() {
+  const searchParams = useSearchParams();
+  const productFromUrl = searchParams.get("product");
   const [tab, setTab] = useState<TabType>("services");
-  const [selectedProduct, setSelectedProduct] = useState("beauty");
+  const [selectedProduct, setSelectedProduct] = useState(productFromUrl || "beauty");
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [sortKey, setSortKey] = useState("name");
@@ -635,6 +639,9 @@ export default function CatalogPage() {
 
   return (
     <div className="p-6 max-w-6xl">
+      {productFromUrl && PRODUCTS.find((p) => p.slug === productFromUrl) && (
+        <ProductTabs product={productFromUrl} active="catalog" />
+      )}
 
       {/* Header */}
       <div className="flex items-center gap-3 mb-6">

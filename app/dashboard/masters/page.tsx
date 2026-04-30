@@ -1,7 +1,9 @@
 "use client";
 import { useState, useEffect, useMemo } from "react";
+import { useSearchParams } from "next/navigation";
 import { Search, ChevronDown, RefreshCw, Users, Trash2 } from "lucide-react";
 import { supabase, PRODUCTS } from "../../lib/supabase";
+import ProductTabs from "../../components/ProductTabs";
 
 // Продукты без "main" (ezze.site — там нет мастеров)
 const PRODUCT_TABS = [
@@ -40,9 +42,11 @@ type Master = {
 const PAGE_SIZE = 30;
 
 export default function MastersPage() {
+  const searchParams = useSearchParams();
+  const productFromUrl = searchParams.get("product");
   const [masters, setMasters] = useState<Master[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedProduct, setSelectedProduct] = useState("all");
+  const [selectedProduct, setSelectedProduct] = useState(productFromUrl || "all");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(0);
   const [total, setTotal] = useState(0);
@@ -172,13 +176,19 @@ export default function MastersPage() {
 
   return (
     <div className="p-6 max-w-6xl">
+      {/* В контексте продукта — ProductTabs сверху */}
+      {productFromUrl && PRODUCTS.find((p) => p.slug === productFromUrl) && (
+        <ProductTabs product={productFromUrl} active="masters" />
+      )}
+
       {/* Заголовок */}
       <div className="flex items-center gap-3 mb-6">
         <Users size={20} className="text-indigo-600" />
         <div>
           <h1 className="text-lg font-semibold text-gray-900 dark:text-white">Мастера</h1>
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            Все зарегистрированные мастера · {total.toLocaleString("ru-RU")} чел.
+            {productFromUrl ? `${productFromUrl} · ` : "Все · "}
+            {total.toLocaleString("ru-RU")} чел.
           </p>
         </div>
         <button
@@ -190,23 +200,25 @@ export default function MastersPage() {
         </button>
       </div>
 
-      {/* Фильтр по продукту */}
-      <div className="flex flex-wrap gap-1.5 mb-4">
-        {PRODUCT_TABS.map((tab) => (
-          <button
-            key={tab.slug}
-            onClick={() => { setSelectedProduct(tab.slug); setPage(0); }}
-            className={[
-              "px-3 py-1.5 rounded-lg text-xs font-medium transition-colors",
-              selectedProduct === tab.slug
-                ? "bg-indigo-600 text-white"
-                : "bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700",
-            ].join(" ")}
-          >
-            {tab.slug !== "all" && (productEmoji[tab.slug] || "")} {tab.label}
-          </button>
-        ))}
-      </div>
+      {/* Фильтр по продукту — скрываем если зашли из контекста продукта */}
+      {!productFromUrl && (
+        <div className="flex flex-wrap gap-1.5 mb-4">
+          {PRODUCT_TABS.map((tab) => (
+            <button
+              key={tab.slug}
+              onClick={() => { setSelectedProduct(tab.slug); setPage(0); }}
+              className={[
+                "px-3 py-1.5 rounded-lg text-xs font-medium transition-colors",
+                selectedProduct === tab.slug
+                  ? "bg-indigo-600 text-white"
+                  : "bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700",
+              ].join(" ")}
+            >
+              {tab.slug !== "all" && (productEmoji[tab.slug] || "")} {tab.label}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Поиск */}
       <div className="relative mb-4">

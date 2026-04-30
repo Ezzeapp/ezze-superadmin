@@ -11,10 +11,12 @@
  * Хранение: app_settings с UNIQUE(product, key). Каждое сохранение upsert по (product, key).
  */
 import { useState, useEffect, useMemo } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   CreditCard, Settings2, Users, Sparkles, Plus, X, RefreshCw, Check, ListChecks, Zap, Receipt,
 } from "lucide-react";
 import { supabase, PRODUCTS } from "../../lib/supabase";
+import ProductTabs from "../../components/ProductTabs";
 
 // ── Типы ──────────────────────────────────────────────────────────────────────
 
@@ -93,7 +95,10 @@ function parseJSON<T>(raw: any, fallback: T): T {
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function TariffsPage() {
+  const searchParams = useSearchParams();
+  const productFromUrl = searchParams.get("product");
   const [product, setProduct] = useState<string>(() => {
+    if (productFromUrl && PRODUCTS.find((p) => p.slug === productFromUrl)) return productFromUrl;
     if (typeof window === "undefined") return PRODUCT_OPTIONS[0]?.slug ?? "beauty";
     return localStorage.getItem(LS_PRODUCT_KEY) || PRODUCT_OPTIONS[0]?.slug || "beauty";
   });
@@ -300,6 +305,10 @@ export default function TariffsPage() {
 
   return (
     <div className="p-8 max-w-5xl space-y-6">
+      {productFromUrl && PRODUCTS.find((p) => p.slug === productFromUrl) && (
+        <ProductTabs product={productFromUrl} active="tariffs" />
+      )}
+
       {/* Header + product selector */}
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
@@ -308,6 +317,8 @@ export default function TariffsPage() {
             Per-product: для каждого продукта свои тарифы, лимиты, цены команды и платёжные провайдеры
           </p>
         </div>
+        {/* Селектор продукта — скрываем если зашли из контекста продукта */}
+        {!productFromUrl && (
         <div className="flex gap-2 items-center">
           <span className="text-xs text-gray-500">Продукт:</span>
           <select
@@ -319,6 +330,9 @@ export default function TariffsPage() {
               <option key={p.slug} value={p.slug}>{p.label}</option>
             ))}
           </select>
+        </div>
+        )}
+        <div className="flex gap-2 items-center">
           {tab === "plans" && (
             <button
               onClick={resetToDefaults}
