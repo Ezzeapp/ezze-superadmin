@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
-import { Zap, Bot, LayoutGrid, Info, KeyRound, Globe } from "lucide-react";
+import { Zap, LayoutGrid, Info, KeyRound, Globe } from "lucide-react";
 import { supabase, PRODUCTS } from "../lib/supabase";
 import ThemeToggle from "../components/ThemeToggle";
 
@@ -139,17 +139,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             );
           })}
 
-          {/* Платформа */}
-          <div className="px-4 pt-4 pb-1">
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-600">Платформа</p>
-          </div>
-          <Link
-            href="/dashboard/settings/ai"
-            className={`${linkBase} ${pathname.startsWith("/dashboard/settings/ai") ? linkActive : linkInactive}`}
-          >
-            <Bot size={14} />
-            <span className="truncate">AI настройки</span>
-          </Link>
         </nav>
 
         {/* Logout */}
