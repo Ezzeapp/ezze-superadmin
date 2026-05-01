@@ -6,7 +6,7 @@ import {
   Heart, Dumbbell, Package, Truck, Hotel, Camera, Music, Dog, Flower2,
   Wrench, Cpu, BookOpen, Coffee, Bike, Baby, Store, ClipboardList,
   WashingMachine, ChevronUp, ChevronDown, EyeOff, Eye, Check, LayoutGrid,
-  Plus, Trash2, Download,
+  Plus, Trash2, Download, Wand2, X, Loader2,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { supabase } from "../../../lib/supabase";
@@ -120,6 +120,19 @@ export default function ProductsSettingsPage() {
   const [activeLang, setActiveLang] = useState("ru");
   const [migrating, setMigrating] = useState(false);
   const [migrated, setMigrated] = useState(false);
+
+  // Quick Add Wizard
+  const [wizardOpen, setWizardOpen] = useState(false);
+  const [wzSlug, setWzSlug] = useState("");
+  const [wzLabelRu, setWzLabelRu] = useState("");
+  const [wzLabelEn, setWzLabelEn] = useState("");
+  const [wzUrl, setWzUrl] = useState("");
+  const [wzIcon, setWzIcon] = useState("Globe");
+  const [wzColor, setWzColor] = useState("from-indigo-500 to-purple-600");
+  const [wzTemplate, setWzTemplate] = useState("beauty");
+  const [wzCreating, setWzCreating] = useState(false);
+  const [wzError, setWzError] = useState("");
+  const [wzSuccess, setWzSuccess] = useState("");
 
   useEffect(() => {
     supabase
@@ -242,6 +255,128 @@ export default function ProductsSettingsPage() {
     }
   }
 
+  function openWizard() {
+    setWzSlug(""); setWzLabelRu(""); setWzLabelEn(""); setWzUrl("");
+    setWzIcon("Globe"); setWzColor("from-indigo-500 to-purple-600");
+    setWzTemplate("beauty"); setWzError(""); setWzSuccess("");
+    setWizardOpen(true);
+  }
+
+  // ключи app_settings, которые НЕ копируем (платёжные секреты, AI ключи, продукт-специфичный JSON)
+  const SKIP_COPY_KEYS = new Set([
+    "products_config",
+    "click_service_id", "click_merchant_id", "click_secret_key", "click_user_id",
+    "payme_merchant_id", "payme_secret_key",
+    "ai_api_key",
+  ]);
+
+  async function handleWizardSubmit() {
+    setWzError("");
+    const slug = wzSlug.trim().toLowerCase();
+    if (!/^[a-z][a-z0-9_-]*$/.test(slug)) {
+      setWzError("Slug: латиница, начинается с буквы. Допустимы: a-z, 0-9, дефис, подчёркивание.");
+      return;
+    }
+    if (items.some((p) => p.slug === slug)) {
+      setWzError("Продукт с таким slug уже существует");
+      return;
+    }
+    if (!wzLabelRu.trim()) {
+      setWzError("Укажите название (RU)");
+      return;
+    }
+    if (slug === wzTemplate) {
+      setWzError("Шаблон не должен совпадать с создаваемым slug");
+      return;
+    }
+
+    setWzCreating(true);
+
+    // 1. Копируем app_settings из шаблона (без секретов)
+    const { data: tmplSettings, error: e1 } = await supabase
+      .from("app_settings")
+      .select("key, value")
+      .eq("product", wzTemplate);
+    if (e1) {
+      setWzError("Ошибка чтения шаблона: " + e1.message);
+      setWzCreating(false);
+      return;
+    }
+    const newSettings = (tmplSettings || [])
+      .filter((s) => !SKIP_COPY_KEYS.has(s.key))
+      .map((s) => ({ product: slug, key: s.key, value: s.value }));
+    if (newSettings.length > 0) {
+      const { error: e2 } = await supabase
+        .from("app_settings")
+        .upsert(newSettings, { onConflict: "product,key" });
+      if (e2) {
+        setWzError("Ошибка копирования настроек: " + e2.message);
+        setWzCreating(false);
+        return;
+      }
+    }
+
+    // 2. Копируем landing_sections из шаблона (только ru/en)
+    const { data: tmplSections, error: e3 } = await supabase
+      .from("landing_sections")
+      .select("section, lang, content, visible")
+      .eq("product", wzTemplate)
+      .in("lang", ["ru", "en"]);
+    if (e3) {
+      setWzError("Ошибка чтения лендинга шаблона: " + e3.message);
+      setWzCreating(false);
+      return;
+    }
+    const newSections = (tmplSections || []).map((s) => ({
+      product: slug,
+      section: s.section,
+      lang: s.lang,
+      content: s.content,
+      visible: s.visible,
+    }));
+    if (newSections.length > 0) {
+      const { error: e4 } = await supabase
+        .from("landing_sections")
+        .upsert(newSections, { onConflict: "product,section,lang" });
+      if (e4) {
+        setWzError("Ошибка копирования лендинга: " + e4.message);
+        setWzCreating(false);
+        return;
+      }
+    }
+
+    // 3. Добавляем в products_config и сохраняем сразу в БД
+    const newProd: ProductConfig = {
+      slug,
+      label: wzLabelRu,
+      iconName: wzIcon,
+      url: wzUrl.trim() || `https://${slug}.ezze.site`,
+      hidden: false,
+      comingSoon: false,
+      description: "",
+      color: wzColor,
+      features: [],
+      showInRegistration: true,
+      nameI18n: { ru: wzLabelRu, ...(wzLabelEn.trim() ? { en: wzLabelEn } : {}) },
+      descI18n: {},
+    };
+    const newItems = [...items, newProd];
+    const { error: e5 } = await supabase.from("app_settings").upsert(
+      { product: "main", key: "products_config", value: JSON.stringify(newItems) },
+      { onConflict: "product,key" }
+    );
+    if (e5) {
+      setWzError("Ошибка сохранения списка продуктов: " + e5.message);
+      setWzCreating(false);
+      return;
+    }
+    setItems(newItems);
+
+    setWzCreating(false);
+    setWzSuccess(`✓ Продукт «${wzLabelRu}» создан. Скопировано: настройки (${newSettings.length}) + лендинг (${newSections.length}).`);
+    setTimeout(() => { setWizardOpen(false); setWzSuccess(""); }, 2200);
+  }
+
   if (loading) {
     return <div className="p-8 text-gray-400 text-sm">Загрузка...</div>;
   }
@@ -259,13 +394,24 @@ export default function ProductsSettingsPage() {
             </p>
           </div>
         </div>
-        <button
-          onClick={addProduct}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 transition-colors"
-        >
-          <Plus size={15} />
-          Добавить продукт
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={openWizard}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 transition-colors"
+            title="Создаст продукт + скопирует настройки и лендинг из шаблона"
+          >
+            <Wand2 size={15} />
+            Мастер создания
+          </button>
+          <button
+            onClick={addProduct}
+            className="flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+            title="Добавить пустую запись (вручную)"
+          >
+            <Plus size={15} />
+            Пусто
+          </button>
+        </div>
       </div>
 
       {/* Language tabs + import button */}
@@ -575,6 +721,160 @@ export default function ProductsSettingsPage() {
           <p className="text-sm text-red-600 dark:text-red-400">{saveError}</p>
         )}
       </div>
+
+      {/* ── Wizard Modal ── */}
+      {wizardOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl w-full max-w-lg max-h-[92vh] overflow-y-auto">
+            <div className="p-5 border-b border-gray-200 dark:border-gray-800 flex items-center gap-2">
+              <Wand2 size={18} className="text-indigo-600 dark:text-indigo-400" />
+              <h2 className="text-base font-semibold text-gray-900 dark:text-white flex-1">
+                Мастер создания продукта
+              </h2>
+              <button
+                onClick={() => setWizardOpen(false)}
+                disabled={wzCreating}
+                className="p-1 rounded-lg text-gray-400 hover:text-gray-700 dark:hover:text-white"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="p-5 space-y-4">
+              <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
+                Создаст продукт и сразу:
+                {" "}скопирует настройки (тарифы, лимиты, AI-конфиг и т.д.) и лендинг (RU/EN) из шаблона.
+                Платёжные ключи и AI-ключ <b>не копируются</b>.
+              </p>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1 block">Slug *</label>
+                  <input
+                    type="text"
+                    value={wzSlug}
+                    onChange={(e) => setWzSlug(e.target.value.toLowerCase())}
+                    placeholder="rental"
+                    className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1 block">Шаблон *</label>
+                  <select
+                    value={wzTemplate}
+                    onChange={(e) => setWzTemplate(e.target.value)}
+                    className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  >
+                    {items.filter((p) => p.slug && p.slug !== "main").map((p) => (
+                      <option key={p.slug} value={p.slug}>{p.label || p.slug}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1 block">Название (RU) *</label>
+                <input
+                  type="text"
+                  value={wzLabelRu}
+                  onChange={(e) => setWzLabelRu(e.target.value)}
+                  placeholder="Ezze Rental"
+                  className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1 block">Название (EN)</label>
+                <input
+                  type="text"
+                  value={wzLabelEn}
+                  onChange={(e) => setWzLabelEn(e.target.value)}
+                  placeholder="Ezze Rental"
+                  className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1 block">URL</label>
+                <input
+                  type="text"
+                  value={wzUrl}
+                  onChange={(e) => setWzUrl(e.target.value)}
+                  placeholder={`https://${wzSlug || "slug"}.ezze.site`}
+                  className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5 block">Иконка</label>
+                <div className="flex gap-1.5 flex-wrap p-2 rounded-lg border border-gray-200 dark:border-gray-700 max-h-28 overflow-y-auto">
+                  {ICON_OPTIONS.map((opt) => {
+                    const Ico = opt.icon;
+                    const isSelected = wzIcon === opt.name;
+                    return (
+                      <button
+                        key={opt.name}
+                        onClick={() => setWzIcon(opt.name)}
+                        className={`p-2 rounded border transition-all ${
+                          isSelected
+                            ? "border-indigo-500 bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400"
+                            : "border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-indigo-300"
+                        }`}
+                      >
+                        <Ico size={15} />
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5 block">Цвет</label>
+                <div className="flex gap-1.5 flex-wrap">
+                  {COLOR_OPTIONS.map((c) => {
+                    const isSelected = wzColor === c.value;
+                    return (
+                      <button
+                        key={c.value}
+                        onClick={() => setWzColor(c.value)}
+                        title={c.label}
+                        className={`w-8 h-8 rounded-lg bg-gradient-to-br ${c.value} ring-2 transition-all ${
+                          isSelected ? "ring-indigo-500 ring-offset-1 dark:ring-offset-gray-900" : "ring-transparent"
+                        }`}
+                      />
+                    );
+                  })}
+                </div>
+              </div>
+
+              {wzError && (
+                <p className="text-sm text-red-600 dark:text-red-400">{wzError}</p>
+              )}
+              {wzSuccess && (
+                <p className="text-sm text-green-600 dark:text-green-400">{wzSuccess}</p>
+              )}
+            </div>
+
+            <div className="p-5 border-t border-gray-200 dark:border-gray-800 flex items-center justify-end gap-2">
+              <button
+                onClick={() => setWizardOpen(false)}
+                disabled={wzCreating}
+                className="px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors disabled:opacity-50"
+              >
+                Отмена
+              </button>
+              <button
+                onClick={handleWizardSubmit}
+                disabled={wzCreating}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 transition-colors disabled:opacity-50"
+              >
+                {wzCreating ? <Loader2 size={15} className="animate-spin" /> : <Wand2 size={15} />}
+                {wzCreating ? "Создаю..." : "Создать продукт"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

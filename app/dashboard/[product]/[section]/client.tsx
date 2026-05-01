@@ -714,6 +714,17 @@ export default function SectionEditorClient({
 
         {/* Editor body */}
         <div className="flex-1 overflow-y-auto p-6">
+          {section === "pricing" && (
+            <div className="mb-4 p-3 rounded-lg border border-indigo-200 dark:border-indigo-800 bg-indigo-50 dark:bg-indigo-900/20">
+              <p className="text-xs text-indigo-900 dark:text-indigo-200 leading-relaxed">
+                <b>Цены подтягиваются автоматически</b> из «Тарифов» этого продукта (<code className="px-1 bg-white/50 dark:bg-black/20 rounded">app_settings.plan_prices</code>).
+                Здесь редактируйте только <b>фичи тарифов, описания и заголовки</b>. Поля <code>price</code> в JSON можно не заполнять.{" "}
+                <Link href={`/dashboard/tariffs?product=${product}`} className="underline hover:text-indigo-700 dark:hover:text-indigo-100">
+                  Открыть тарифы →
+                </Link>
+              </p>
+            </div>
+          )}
           {loading ? (
             <div className="flex items-center justify-center h-40 text-gray-400 text-sm">Загрузка...</div>
           ) : hasForm && !showRaw ? (
