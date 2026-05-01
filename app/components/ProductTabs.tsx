@@ -18,7 +18,7 @@ const TABS: { id: ProductTab; label: string; icon: any; href: (p: string) => str
   { id: "masters",     label: "Мастера",       icon: Users,         href: (p) => `/dashboard/masters?product=${p}` },
   { id: "clients",     label: "Клиенты",       icon: ContactRound,  href: (p) => `/dashboard/clients?product=${p}` },
   { id: "teams",       label: "Команды",       icon: UsersRound,    href: (p) => `/dashboard/teams?product=${p}` },
-  { id: "catalog",     label: "Справочник",    icon: BookOpen,      href: (p) => `/dashboard/catalog?product=${p}` },
+  { id: "catalog",     label: "Справочник",    icon: BookOpen,      href: (p) => p === "rental" ? `/dashboard/rental-catalog` : `/dashboard/catalog?product=${p}` },
 ];
 
 export default function ProductTabs({

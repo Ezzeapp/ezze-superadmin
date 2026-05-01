@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Search, Plus, Pencil, Trash2, X, KeyRound, Loader2 } from "lucide-react";
 import { supabase } from "../../lib/supabase";
+import ProductTabs from "../../components/ProductTabs";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type RentalCategory = "transport" | "tool" | "event" | "sport" | "household" | "other";
@@ -211,7 +212,8 @@ export default function RentalCatalogPage() {
 
   // ── Render ───────────────────────────────────────────────────────────────────
   return (
-    <div className="p-6 max-w-7xl mx-auto">
+    <div className="p-6">
+      <ProductTabs product="rental" active="catalog">
       {/* Header */}
       <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
         <div className="flex items-center gap-3">
@@ -558,6 +560,7 @@ export default function RentalCatalogPage() {
           </div>
         </div>
       )}
+      </ProductTabs>
     </div>
   );
 }
