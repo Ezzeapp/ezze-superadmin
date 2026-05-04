@@ -11,7 +11,8 @@ export type FeatureSection =
   | "analytics"
   | "catalog"
   | "tools"
-  | "marketing";
+  | "marketing"
+  | "settings";
 
 export interface FeatureConfig {
   key: string;
@@ -54,6 +55,15 @@ export const FEATURES: FeatureConfig[] = [
   { key: "reviews",     label: "Отзывы",     description: "Сбор и управление отзывами клиентов после визита",                                            defaultPlan: "free", section: "marketing" },
   { key: "promo_codes", label: "Промокоды",  description: "Создание скидочных кодов и спецпредложений для клиентов",                                    defaultPlan: "pro",  section: "marketing" },
   { key: "loyalty",     label: "Лояльность", description: "Программа лояльности — баллы, уровни клиентов, реферальная система",                          defaultPlan: "pro",  section: "marketing" },
+
+  // Настройки (вкладки в /settings) — суперадмин управляет видимостью per-product.
+  // Аккаунт и Интерфейс не отключаемые (базовые), здесь не указаны.
+  { key: "settings_schedule",      label: "Настройки → Расписание",     description: "Вкладка «Расписание» в /settings (часы работы, перерывы, блокировки дат). Для cleaning/workshop часто не нужна.", defaultPlan: "free", section: "settings" },
+  { key: "settings_public_page",   label: "Настройки → Моя страница",   description: "Вкладка «Моя страница» — управление публичным лендингом /p/{slug}.",                                              defaultPlan: "free", section: "settings" },
+  { key: "settings_booking",       label: "Настройки → Онлайн-запись",  description: "Вкладка «Онлайн-запись» — настройки слот-бронирования (только для appointment-based продуктов).",                  defaultPlan: "free", section: "settings" },
+  { key: "settings_order_types",   label: "Настройки → Типы заказов",   description: "Вкладка «Типы заказов» (cleaning) или «Типы устройств» (workshop) — каталог категорий.",                          defaultPlan: "free", section: "settings" },
+  { key: "settings_receipt",       label: "Настройки → Квитанция",      description: "Вкладка «Квитанция» — реквизиты организации, оферта, формат печати.",                                              defaultPlan: "free", section: "settings" },
+  { key: "settings_notifications", label: "Настройки → Уведомления",    description: "Вкладка «Уведомления» — шаблоны TG-сообщений клиенту по статусам заказа.",                                       defaultPlan: "free", section: "settings" },
 ];
 
 export const PLAN_ORDER: FeaturePlan[] = ["free", "pro", "enterprise"];
@@ -77,4 +87,5 @@ export const SECTION_LABELS: Record<FeatureSection, string> = {
   catalog:      "Справочники",
   tools:        "Инструменты",
   marketing:    "Маркетинг",
+  settings:     "Настройки (вкладки)",
 };
