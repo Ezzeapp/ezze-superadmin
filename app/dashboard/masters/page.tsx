@@ -25,19 +25,33 @@ const PLAN_COLORS: Record<string, string> = {
   enterprise: "text-purple-700 bg-purple-100",
 };
 
+type Profile = {
+  display_name: string | null;
+  profession: string | null;
+  tg_chat_id: string | null;
+  phone: string | null;
+  product: string | null;
+};
+
 type Master = {
   id: string;
   plan: string;
   disabled: boolean;
   created_at: string;
   product: string;
-  master_profiles: {
-    display_name: string | null;
-    profession: string | null;
-    tg_chat_id: string | null;
-    phone: string | null;
-  } | null;
+  master_profiles: Profile[] | null;
 };
+
+// У одного user_id может быть несколько master_profiles (по одному на продукт),
+// поэтому PostgREST embed возвращает МАССИВ. Берём профиль, совпадающий с
+// product юзера; если такого нет — первый с непустым именем; иначе первый.
+function pickProfile(m: Master): Profile | null {
+  const list = m.master_profiles || [];
+  if (list.length === 0) return null;
+  const byProduct = list.find((p) => p.product === m.product);
+  if (byProduct) return byProduct;
+  return list.find((p) => p.display_name) || list[0];
+}
 
 const PAGE_SIZE = 30;
 
@@ -70,7 +84,7 @@ export default function MastersPage() {
         .from("users")
         .select(
           `id, plan, disabled, created_at, product,
-           master_profiles (display_name, profession, tg_chat_id, phone)`,
+           master_profiles (display_name, profession, tg_chat_id, phone, product)`,
           { count: "exact" }
         )
         .neq("is_admin", true)
@@ -97,9 +111,10 @@ export default function MastersPage() {
     const q = search.toLowerCase().trim();
     if (!q) return masters;
     return masters.filter((m) => {
-      const name = (m.master_profiles?.display_name || "").toLowerCase();
-      const prof = (m.master_profiles?.profession || "").toLowerCase();
-      const phone = (m.master_profiles?.phone || "").toLowerCase();
+      const p = pickProfile(m);
+      const name = (p?.display_name || "").toLowerCase();
+      const prof = (p?.profession || "").toLowerCase();
+      const phone = (p?.phone || "").toLowerCase();
       return name.includes(q) || prof.includes(q) || phone.includes(q);
     });
   }, [masters, search]);
@@ -258,9 +273,10 @@ export default function MastersPage() {
               </tr>
             ) : (
               filtered.map((master) => {
-                const name = master.master_profiles?.display_name || "—";
-                const prof = master.master_profiles?.profession || "—";
-                const phone = master.master_profiles?.phone || "";
+                const profile = pickProfile(master);
+                const name = profile?.display_name || "—";
+                const prof = profile?.profession || "—";
+                const phone = profile?.phone || "";
                 const prod = master.product || "beauty";
                 const isSaving = saving === master.id;
 
@@ -431,7 +447,7 @@ export default function MastersPage() {
                   Удалить аккаунт?
                 </h2>
                 <p className="text-sm text-gray-500 dark:text-gray-400">
-                  {deleteTarget.master_profiles?.display_name || "—"}
+                  {pickProfile(deleteTarget)?.display_name || "—"}
                 </p>
               </div>
             </div>
