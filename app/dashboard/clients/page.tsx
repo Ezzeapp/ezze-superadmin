@@ -3,7 +3,7 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import {
   Search, ChevronDown, ChevronRight, RefreshCw, ContactRound,
-  Trash2, Send, History, X, AlertCircle,
+  Trash2, Send, History, X, AlertCircle, AlertTriangle,
 } from "lucide-react";
 import { supabase, PRODUCTS } from "../../lib/supabase";
 import ProductTabs from "../../components/ProductTabs";
@@ -90,6 +90,12 @@ export default function ClientsPage() {
   const [sendError, setSendError]       = useState("");
   const [sendOk, setSendOk]             = useState(false);
 
+  // Модалка массового удаления
+  const [bulkOpen, setBulkOpen]       = useState(false);
+  const [bulkConfirm, setBulkConfirm] = useState("");
+  const [bulkRunning, setBulkRunning] = useState(false);
+  const [bulkError, setBulkError]     = useState("");
+
   // ─── Debounce поиска ─────────────────────────────────────────────
   useEffect(() => {
     const t = setTimeout(() => {
@@ -104,10 +110,11 @@ export default function ClientsPage() {
     setLoading(true);
     try {
       const { data, error } = await supabase.rpc("get_platform_clients", {
-        p_search: debounced || null,
-        p_filter: filter,
-        p_limit:  PAGE_SIZE,
-        p_offset: page * PAGE_SIZE,
+        p_search:  debounced || null,
+        p_filter:  filter,
+        p_limit:   PAGE_SIZE,
+        p_offset:  page * PAGE_SIZE,
+        p_product: productFromUrl || null,
       });
       if (error) throw error;
       setRows((data?.rows ?? []) as PlatformClient[]);
@@ -119,9 +126,12 @@ export default function ClientsPage() {
     } finally {
       setLoading(false);
     }
-  }, [filter, page, debounced]);
+  }, [filter, page, debounced, productFromUrl]);
 
   useEffect(() => { loadClients(); }, [loadClients]);
+
+  // Сбрасываем страницу при смене продукта
+  useEffect(() => { setPage(0); }, [productFromUrl]);
 
   // ─── История заказов (ленивая загрузка) ─────────────────────────
   async function loadOrders(row: PlatformClient) {
@@ -209,6 +219,32 @@ export default function ClientsPage() {
     }
   }
 
+  // ─── Массовое удаление ──────────────────────────────────────────
+  async function confirmBulkDelete() {
+    setBulkRunning(true);
+    setBulkError("");
+    try {
+      const { data, error } = await supabase.functions.invoke("admin-delete-all-clients", {
+        body: {
+          product: productFromUrl || undefined,
+          confirm: "DELETE_ALL_CLIENTS",
+        },
+      });
+      if (error) throw new Error((error as { message?: string })?.message || "Ошибка удаления");
+      if (data?.message && data.message !== "ok") throw new Error(data?.detail || data.message);
+      setBulkOpen(false);
+      setBulkConfirm("");
+      setExpanded(new Set());
+      setOrders({});
+      setPage(0);
+      await loadClients();
+    } catch (e: unknown) {
+      setBulkError(e instanceof Error ? e.message : "Ошибка");
+    } finally {
+      setBulkRunning(false);
+    }
+  }
+
   // ─── Отправка сообщения ─────────────────────────────────────────
   async function confirmSend() {
     if (!msgTarget?.tg_chat_id || !msgText.trim()) return;
@@ -256,13 +292,30 @@ export default function ClientsPage() {
             {total.toLocaleString("ru-RU")} чел.
           </p>
         </div>
-        <button
-          onClick={() => { setPage(0); loadClients(); }}
-          className="ml-auto p-2 rounded-lg text-gray-400 hover:text-gray-700 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-          title="Обновить"
-        >
-          <RefreshCw size={15} />
-        </button>
+        <div className="ml-auto flex items-center gap-2">
+          <button
+            onClick={() => {
+              setBulkConfirm("");
+              setBulkError("");
+              setBulkOpen(true);
+            }}
+            disabled={total === 0}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-red-200 dark:border-red-900/40 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            title={productFromUrl
+              ? `Удалить всех клиентов продукта "${productFromUrl}"`
+              : "Удалить всех клиентов платформы"}
+          >
+            <Trash2 size={13} />
+            Удалить всех
+          </button>
+          <button
+            onClick={() => { setPage(0); loadClients(); }}
+            className="p-2 rounded-lg text-gray-400 hover:text-gray-700 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            title="Обновить"
+          >
+            <RefreshCw size={15} />
+          </button>
+        </div>
       </div>
 
       {/* Фильтры */}
@@ -709,6 +762,80 @@ export default function ClientsPage() {
           </div>
         </div>
       )}
+      {/* Модалка массового удаления */}
+      {bulkOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl p-6 w-full max-w-md mx-4">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center shrink-0">
+                <AlertTriangle size={18} className="text-red-600" />
+              </div>
+              <div>
+                <h2 className="text-base font-semibold text-gray-900 dark:text-white">
+                  Удалить всех клиентов?
+                </h2>
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  {productFromUrl
+                    ? `Продукт: ${productFromUrl} · ${total.toLocaleString("ru-RU")} клиентов`
+                    : `Все продукты платформы · ${total.toLocaleString("ru-RU")} клиентов`}
+                </p>
+              </div>
+            </div>
+
+            <div className="text-sm text-gray-600 dark:text-gray-300 mb-4 space-y-1.5">
+              <p>Будут удалены безвозвратно:</p>
+              <ul className="list-disc pl-5 text-xs text-gray-500 dark:text-gray-400 space-y-0.5">
+                <li>карточки клиентов у мастеров</li>
+                <li>все записи (appointments)</li>
+                <li>все квитанции (cleaning / workshop)</li>
+                {!productFromUrl && <li>TG-регистрации клиентов (tg_clients)</li>}
+              </ul>
+              {productFromUrl && (
+                <p className="text-[11px] text-gray-400 mt-2">
+                  TG-регистрации не удаляются — клиент может быть зарегистрирован в других продуктах.
+                </p>
+              )}
+            </div>
+
+            <label className="text-xs font-medium text-gray-700 dark:text-gray-300">
+              Введите <code className="px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-red-600">УДАЛИТЬ</code> для подтверждения:
+            </label>
+            <input
+              type="text"
+              value={bulkConfirm}
+              onChange={(e) => setBulkConfirm(e.target.value)}
+              placeholder="УДАЛИТЬ"
+              autoFocus
+              className="w-full mt-1.5 px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500"
+            />
+
+            {bulkError && (
+              <p className="text-sm text-red-500 mt-3 flex items-start gap-1.5">
+                <AlertCircle size={14} className="mt-0.5 shrink-0" />
+                <span>{bulkError}</span>
+              </p>
+            )}
+
+            <div className="flex gap-2 mt-4">
+              <button
+                onClick={confirmBulkDelete}
+                disabled={bulkRunning || bulkConfirm.trim() !== "УДАЛИТЬ"}
+                className="flex-1 py-2 rounded-lg bg-red-600 text-white text-sm font-medium hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {bulkRunning ? "Удаляем..." : "Да, удалить всех"}
+              </button>
+              <button
+                onClick={() => { setBulkOpen(false); setBulkConfirm(""); setBulkError(""); }}
+                disabled={bulkRunning}
+                className="flex-1 py-2 rounded-lg border border-gray-200 dark:border-gray-700 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+              >
+                Отмена
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       </ProductTabs>
     </div>
   );
