@@ -57,6 +57,31 @@ const LABEL_LANGS = [
   { code: "uz", label: "UZ" },
 ];
 
+// Должно совпадать с ezze-app/src/pages/home/hybrids/_parts/tileIcons.ts → COLOR_PALETTE
+// (имя цвета сохраняется в tile.color, фронт сам резолвит градиент/bg/fg)
+const COLOR_PALETTE: { name: string; from: string; to: string }[] = [
+  { name: "blue",    from: "#60a5fa", to: "#1d4ed8" },
+  { name: "sky",     from: "#38bdf8", to: "#0369a1" },
+  { name: "cyan",    from: "#22d3ee", to: "#0e7490" },
+  { name: "teal",    from: "#2dd4bf", to: "#0f766e" },
+  { name: "emerald", from: "#34d399", to: "#047857" },
+  { name: "lime",    from: "#a3e635", to: "#4d7c0f" },
+  { name: "yellow",  from: "#facc15", to: "#a16207" },
+  { name: "amber",   from: "#fbbf24", to: "#b45309" },
+  { name: "orange",  from: "#fb923c", to: "#c2410c" },
+  { name: "red",     from: "#f87171", to: "#b91c1c" },
+  { name: "rose",    from: "#fb7185", to: "#be123c" },
+  { name: "pink",    from: "#f472b6", to: "#be185d" },
+  { name: "fuchsia", from: "#e879f9", to: "#a21caf" },
+  { name: "violet",  from: "#c084fc", to: "#6d28d9" },
+  { name: "indigo",  from: "#818cf8", to: "#4338ca" },
+  { name: "slate",   from: "#94a3b8", to: "#475569" },
+];
+
+const COLOR_BY_NAME: Record<string, { from: string; to: string }> = Object.fromEntries(
+  COLOR_PALETTE.map((c) => [c.name, { from: c.from, to: c.to }])
+);
+
 const MODE_OPTIONS: { value: HomeScreenMode; Icon: LucideIcon; label: string; desc: string }[] = [
   { value: "sidebar",      Icon: PanelLeft,  label: "Сайдбар",          desc: "Классическое боковое меню, главная сразу открывает основной раздел" },
   { value: "tiles",        Icon: LayoutGrid, label: "Плитки",            desc: "Простая сетка квадратных плиток на главной" },
@@ -220,12 +245,25 @@ export default function HomeScreenTab({ product }: { product: string }) {
           <div className="space-y-2">
             {tiles.map((tile, index) => {
               const Icon = ICON_MAP[tile.icon] ?? LayoutDashboard;
+              const picked = tile.color ? COLOR_BY_NAME[tile.color] : null;
               return (
                 <div key={tile.id} className="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-3 space-y-3">
                   {/* Строка 1 */}
                   <div className="flex items-center gap-3">
-                    <div className="flex items-center justify-center h-8 w-8 rounded-md bg-indigo-100 dark:bg-indigo-900/30 shrink-0">
-                      <Icon size={14} className="text-indigo-600 dark:text-indigo-400" />
+                    <div
+                      className={`flex items-center justify-center h-8 w-8 rounded-md shrink-0 ${
+                        picked ? "" : "bg-indigo-100 dark:bg-indigo-900/30"
+                      }`}
+                      style={
+                        picked
+                          ? { background: `linear-gradient(135deg, ${picked.from}, ${picked.to})` }
+                          : undefined
+                      }
+                    >
+                      <Icon
+                        size={14}
+                        className={picked ? "text-white" : "text-indigo-600 dark:text-indigo-400"}
+                      />
                     </div>
 
                     {/* Иконка */}
@@ -294,6 +332,40 @@ export default function HomeScreenTab({ product }: { product: string }) {
                     >
                       <Trash2 size={14} />
                     </button>
+                  </div>
+
+                  {/* Цвет */}
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-[10px] text-gray-500 dark:text-gray-400 mr-1">Цвет:</span>
+                    <button
+                      type="button"
+                      onClick={() => updateTile(index, { color: undefined })}
+                      className={`h-5 w-5 rounded-full border flex items-center justify-center text-[9px] text-gray-500 transition ${
+                        !tile.color
+                          ? "border-indigo-500 ring-2 ring-indigo-200 dark:ring-indigo-800"
+                          : "border-gray-300 dark:border-gray-700 hover:border-gray-500"
+                      }`}
+                      title="По умолчанию (по id плитки)"
+                    >
+                      ∅
+                    </button>
+                    {COLOR_PALETTE.map((c) => {
+                      const active = tile.color === c.name;
+                      return (
+                        <button
+                          key={c.name}
+                          type="button"
+                          onClick={() => updateTile(index, { color: c.name })}
+                          title={c.name}
+                          className={`h-5 w-5 rounded-full border transition ${
+                            active
+                              ? "border-indigo-500 ring-2 ring-indigo-200 dark:ring-indigo-800 scale-110"
+                              : "border-white dark:border-gray-800 hover:scale-110"
+                          }`}
+                          style={{ background: `linear-gradient(135deg, ${c.from}, ${c.to})` }}
+                        />
+                      );
+                    })}
                   </div>
 
                   {/* Строка 2: переводы */}

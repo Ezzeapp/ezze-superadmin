@@ -8,6 +8,7 @@ export interface HomeScreenTile {
   route: string;
   visible: boolean;
   order: number;
+  color?: string; // имя из COLOR_PALETTE — синхрон с ezze-app/src/pages/home/hybrids/_parts/tileIcons.ts
 }
 
 export type HomeScreenMode =
