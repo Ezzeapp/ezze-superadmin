@@ -12,7 +12,8 @@ export type FeatureSection =
   | "catalog"
   | "tools"
   | "marketing"
-  | "settings";
+  | "settings"
+  | "interface";
 
 export interface FeatureConfig {
   key: string;
@@ -50,8 +51,8 @@ export const FEATURES: FeatureConfig[] = [
   { key: "date_blocks",           label: "Блокировка дат",           description: "Блокировка дней и временных интервалов — отгул, отпуск, недоступность",                      defaultPlan: "free", section: "tools" },
   { key: "data_transfer",         label: "Перенос данных",           description: "Генерация кода для копирования услуг, категорий, материалов и склада другому мастеру",       defaultPlan: "pro",  section: "tools" },
 
-  // Интерфейс (общие UI-элементы шапки/сайдбара)
-  { key: "topbar_search",         label: "Поиск в шапке",            description: "Глобальный поиск (Cmd+K) в TopBar — по клиентам, записям, заказам. Для cleaning часто не нужен (нет appointment-поиска).", defaultPlan: "free", section: "tools" },
+  // Интерфейс (UI-элементы шапки/сайдбара/нижней панели)
+  { key: "topbar_search",         label: "Поиск в шапке",            description: "Глобальный поиск (Cmd+K) в TopBar — по клиентам, записям, заказам. Для cleaning часто не нужен (нет appointment-поиска).", defaultPlan: "free", section: "interface" },
 
   // Маркетинг
   { key: "marketing",   label: "Маркетинг",  description: "Раздел маркетинга — рассылки клиентам, авто-уведомления, отзывы",                            defaultPlan: "free", section: "marketing" },
@@ -92,4 +93,5 @@ export const SECTION_LABELS: Record<FeatureSection, string> = {
   tools:        "Инструменты",
   marketing:    "Маркетинг",
   settings:     "Настройки (вкладки)",
+  interface:    "Интерфейс",
 };
