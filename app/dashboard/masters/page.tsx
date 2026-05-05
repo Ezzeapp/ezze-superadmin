@@ -71,6 +71,7 @@ export default function MastersPage() {
   const [deleteTarget, setDeleteTarget] = useState<Master | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState("");
+  const [deleteWarning, setDeleteWarning] = useState<string | null>(null);
 
   useEffect(() => {
     loadMasters();
@@ -149,10 +150,14 @@ export default function MastersPage() {
     if (!deleteTarget) return;
     setDeleting(true);
     setDeleteError("");
+    setDeleteWarning(null);
     try {
-      const { data, error } = await supabase.functions.invoke("admin-delete-user", {
-        body: { userId: deleteTarget.id },
-      });
+      const { data, error } = await supabase.functions.invoke<{
+        message?: string;
+        tg_notified?: boolean;
+        tg_error?: string;
+        tg_skipped?: string;
+      }>("admin-delete-user", { body: { userId: deleteTarget.id } });
 
       if (error) {
         const msg = (error as { message?: string })?.message || "Ошибка удаления";
@@ -165,7 +170,21 @@ export default function MastersPage() {
       // Убираем из списка
       setMasters((prev) => prev.filter((m) => m.id !== deleteTarget.id));
       setTotal((t) => t - 1);
-      setDeleteTarget(null);
+
+      // Если уведомление не дошло — оставляем модалку открытой с предупреждением.
+      // Иначе закрываем как раньше.
+      if (data?.tg_notified) {
+        setDeleteTarget(null);
+      } else if (data?.tg_skipped === "no_tg_chat_id") {
+        setDeleteWarning("Мастер удалён, но у него не был привязан Telegram — уведомление не отправлено.");
+      } else if (data?.tg_skipped === "no_bot_token") {
+        setDeleteWarning("Мастер удалён. Telegram-бот не настроен (TG_BOT_TOKEN отсутствует) — обратитесь к разработчику.");
+      } else if (data?.tg_error) {
+        setDeleteWarning(`Мастер удалён, но Telegram вернул ошибку: ${data.tg_error}. Возможно, бот заблокирован пользователем.`);
+      } else {
+        // Никаких признаков (старая версия функции?) — просто закрываем.
+        setDeleteTarget(null);
+      }
     } catch (e: unknown) {
       setDeleteError(e instanceof Error ? e.message : "Ошибка");
     } finally {
@@ -439,12 +458,14 @@ export default function MastersPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl p-6 w-full max-w-sm mx-4">
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center shrink-0">
-                <Trash2 size={18} className="text-red-600" />
+              <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
+                deleteWarning ? "bg-amber-100 dark:bg-amber-900/30" : "bg-red-100 dark:bg-red-900/30"
+              }`}>
+                <Trash2 size={18} className={deleteWarning ? "text-amber-600" : "text-red-600"} />
               </div>
               <div>
                 <h2 className="text-base font-semibold text-gray-900 dark:text-white">
-                  Удалить аккаунт?
+                  {deleteWarning ? "Аккаунт удалён" : "Удалить аккаунт?"}
                 </h2>
                 <p className="text-sm text-gray-500 dark:text-gray-400">
                   {pickProfile(deleteTarget)?.display_name || "—"}
@@ -452,30 +473,47 @@ export default function MastersPage() {
               </div>
             </div>
 
-            <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">
-              Все данные мастера будут удалены безвозвратно: профиль, услуги, записи, клиенты.
-              Мастер получит уведомление в Telegram.
-            </p>
+            {deleteWarning ? (
+              <p className="text-sm text-amber-700 dark:text-amber-300 mb-4 bg-amber-50 dark:bg-amber-900/20 rounded-lg p-3">
+                ⚠️ {deleteWarning}
+              </p>
+            ) : (
+              <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">
+                Все данные мастера будут удалены безвозвратно: профиль, услуги, записи, клиенты.
+                Мастер получит уведомление в Telegram.
+              </p>
+            )}
 
             {deleteError && (
               <p className="text-sm text-red-500 mb-3">⚠️ {deleteError}</p>
             )}
 
             <div className="flex gap-2">
-              <button
-                onClick={confirmDelete}
-                disabled={deleting}
-                className="flex-1 py-2 rounded-lg bg-red-600 text-white text-sm font-medium hover:bg-red-700 disabled:opacity-50 transition-colors"
-              >
-                {deleting ? "Удаляем..." : "Да, удалить"}
-              </button>
-              <button
-                onClick={() => { setDeleteTarget(null); setDeleteError(""); }}
-                disabled={deleting}
-                className="flex-1 py-2 rounded-lg border border-gray-200 dark:border-gray-700 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-              >
-                Отмена
-              </button>
+              {deleteWarning ? (
+                <button
+                  onClick={() => { setDeleteTarget(null); setDeleteError(""); setDeleteWarning(null); }}
+                  className="flex-1 py-2 rounded-lg bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-sm font-medium hover:opacity-90 transition-opacity"
+                >
+                  Закрыть
+                </button>
+              ) : (
+                <>
+                  <button
+                    onClick={confirmDelete}
+                    disabled={deleting}
+                    className="flex-1 py-2 rounded-lg bg-red-600 text-white text-sm font-medium hover:bg-red-700 disabled:opacity-50 transition-colors"
+                  >
+                    {deleting ? "Удаляем..." : "Да, удалить"}
+                  </button>
+                  <button
+                    onClick={() => { setDeleteTarget(null); setDeleteError(""); setDeleteWarning(null); }}
+                    disabled={deleting}
+                    className="flex-1 py-2 rounded-lg border border-gray-200 dark:border-gray-700 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                  >
+                    Отмена
+                  </button>
+                </>
+              )}
             </div>
           </div>
         </div>
